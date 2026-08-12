@@ -6,7 +6,6 @@ RECIPIENT_BY_EVENT: dict[RoadEventType, str] = {
     RoadEventType.ACCIDENT: "ambulance",
     RoadEventType.POTHOLE: "municipality",
     RoadEventType.SPEED_BUMP: "municipality",
-    RoadEventType.MANHOLE: "municipality",
     RoadEventType.ROAD_CRACK: "municipality",
     RoadEventType.BARRIER: "municipality",
     RoadEventType.ROAD_CLOSED: "municipality",
@@ -19,7 +18,6 @@ SEVERITY_BY_EVENT: dict[RoadEventType, str] = {
     RoadEventType.ACCIDENT: "critical",
     RoadEventType.POTHOLE: "medium",
     RoadEventType.SPEED_BUMP: "medium",
-    RoadEventType.MANHOLE: "medium",
     RoadEventType.ROAD_CRACK: "low",
     RoadEventType.BARRIER: "high",
     RoadEventType.ROAD_CLOSED: "high",
@@ -27,6 +25,14 @@ SEVERITY_BY_EVENT: dict[RoadEventType, str] = {
     RoadEventType.CONSTRUCTION: "low",
     RoadEventType.FLOODED_ROAD: "high",
 }
+
+
+def public_event_type(event: RoadEvent) -> str:
+    """API/frontend event type — manhole is stored as pothole + detection_class metadata."""
+    meta = event.extra_metadata or {}
+    if meta.get("detection_class") == "manhole":
+        return "manhole"
+    return event.event_type.value
 
 
 def default_recipient(event_type: RoadEventType) -> str:
@@ -44,7 +50,7 @@ def serialize_road_event(event: RoadEvent) -> dict:
     image_url = meta.get("image_url") or meta.get("evidence_url")
     return {
         "id": str(event.id),
-        "event_type": event.event_type.value,
+        "event_type": public_event_type(event),
         "latitude": event.latitude,
         "longitude": event.longitude,
         "confidence": event.confidence,

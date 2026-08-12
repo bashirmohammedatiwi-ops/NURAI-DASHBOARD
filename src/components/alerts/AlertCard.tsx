@@ -20,7 +20,7 @@ interface AlertCardProps {
 }
 
 export function AlertCard({ alert, onResolve, resolving, onSelect, selected, compact }: AlertCardProps) {
-  const meta = EVENT_META[alert.event_type];
+  const meta = EVENT_META[alert.event_type] ?? { labelAr: alert.event_type, color: '#64748b', icon: '⚠️' };
   const recipient = RECIPIENT_META[alert.recipient];
   const gov = governorateName(alert.municipality_id ?? guessGovernorate(alert.latitude, alert.longitude));
   const locationLine = alertLocationLine(alert);

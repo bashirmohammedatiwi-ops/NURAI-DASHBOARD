@@ -21,7 +21,7 @@ from app.services.lab.predict_client import (
     resolve_predict_url,
     warmup_predict_service,
 )
-from app.services.road.event_helpers import default_recipient, serialize_road_event
+from app.services.road.event_helpers import default_recipient, public_event_type, serialize_road_event
 
 router = APIRouter(prefix="/control-center", tags=["control-center"])
 
@@ -33,6 +33,10 @@ LAB_BATCH_CONCURRENCY = 4
 
 @router.get("/{project_id}/overview")
 async def control_center_overview(project_id: UUID, db: AsyncSession = Depends(get_db)):
+    from app.services.demo.iraq_demo_seed import ensure_project_demo_events
+
+    await ensure_project_demo_events(db, project_id)
+
     active_events = await db.execute(
         select(RoadEvent).where(RoadEvent.project_id == project_id, RoadEvent.is_active == True).limit(500)
     )
@@ -586,7 +590,6 @@ def _notification_message(event: RoadEvent) -> str:
     labels = {
         RoadEventType.ACCIDENT: "تم رصد حادث — يتطلب استجابة فورية",
         RoadEventType.POTHOLE: "حفرة في الطريق — إرسال لفرق الصيانة",
-        RoadEventType.MANHOLE: "بالوعة — إرسال لفرق الصيانة",
         RoadEventType.SPEED_BUMP: "مطب سرعة — إرسال للبلدية",
         RoadEventType.TRAFFIC_VIOLATION: "مخالفة مرورية — إشعار للمرور",
         RoadEventType.ROAD_CLOSED: "طريق مغلق — تحديث للخرائط الحية",
@@ -595,7 +598,11 @@ def _notification_message(event: RoadEvent) -> str:
         RoadEventType.ROAD_CRACK: "شقوق في الطريق",
         RoadEventType.BARRIER: "حاجز على الطريق",
     }
-    base = labels.get(event.event_type, f"تنبيه: {event.event_type.value}")
+    pub = public_event_type(event)
+    if pub == "manhole":
+        base = "بالوعة — إرسال لفرق الصيانة"
+    else:
+        base = labels.get(event.event_type, f"تنبيه: {pub}")
     recipient = default_recipient(event.event_type)
     targets = {
         "ambulance": "الإسعاف",

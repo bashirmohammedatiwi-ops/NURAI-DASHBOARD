@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -13,6 +13,12 @@ from app.api.schemas import RoadEventCreate
 from app.services.road.event_helpers import serialize_road_event
 
 router = APIRouter(tags=["road-intelligence"])
+
+
+async def _ensure_demo_events(db: AsyncSession, project_id: UUID) -> None:
+    from app.services.demo.iraq_demo_seed import ensure_project_demo_events
+
+    await ensure_project_demo_events(db, project_id)
 
 
 @router.get("/road-intelligence/{project_id}/stats")
@@ -34,12 +40,18 @@ async def road_stats(project_id: UUID, db: AsyncSession = Depends(get_db)):
     )
     potholes = await db.execute(
         select(func.count(RoadEvent.id)).where(
-            RoadEvent.project_id == project_id, RoadEvent.event_type == RoadEventType.POTHOLE
+            RoadEvent.project_id == project_id,
+            RoadEvent.event_type == RoadEventType.POTHOLE,
+            or_(
+                RoadEvent.extra_metadata["detection_class"].astext.is_(None),
+                RoadEvent.extra_metadata["detection_class"].astext != "manhole",
+            ),
         )
     )
     manholes = await db.execute(
         select(func.count(RoadEvent.id)).where(
-            RoadEvent.project_id == project_id, RoadEvent.event_type == RoadEventType.MANHOLE
+            RoadEvent.project_id == project_id,
+            RoadEvent.extra_metadata["detection_class"].astext == "manhole",
         )
     )
     speed_bumps = await db.execute(
@@ -51,7 +63,7 @@ async def road_stats(project_id: UUID, db: AsyncSession = Depends(get_db)):
         select(func.count(RoadEvent.id)).where(
             RoadEvent.project_id == project_id,
             RoadEvent.is_active == True,
-            RoadEvent.event_type.in_([RoadEventType.POTHOLE, RoadEventType.SPEED_BUMP, RoadEventType.MANHOLE]),
+            RoadEvent.event_type.in_([RoadEventType.POTHOLE, RoadEventType.SPEED_BUMP]),
         )
     )
     closed = await db.execute(
@@ -100,10 +112,14 @@ async def road_events(
     limit: int = Query(500, le=1000),
     db: AsyncSession = Depends(get_db),
 ):
+    await _ensure_demo_events(db, project_id)
+
     query = select(RoadEvent).where(RoadEvent.project_id == project_id)
     if active_only:
         query = query.where(RoadEvent.is_active == True)
-    if event_type:
+    if event_type == "manhole":
+        query = query.where(RoadEvent.extra_metadata["detection_class"].astext == "manhole")
+    elif event_type:
         try:
             query = query.where(RoadEvent.event_type == RoadEventType(event_type))
         except ValueError:

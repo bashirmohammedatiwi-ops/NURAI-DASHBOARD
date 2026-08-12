@@ -10,15 +10,15 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import FleetDevice, Project, RoadEvent, RoadEventType
 from app.models.fleet import DeviceTelemetry
 from app.services.road.event_helpers import default_recipient
 
-DEMO_MARKER = "rasid_iraq_demo_v2"
-LEGACY_DEMO_MARKERS = ("rasid_iraq_demo_v1",)
+DEMO_MARKER = "rasid_iraq_demo_v3"
+LEGACY_DEMO_MARKERS = ("rasid_iraq_demo_v1", "rasid_iraq_demo_v2")
 DEMO_NEIGHBORHOOD = "zayouna"
 DEMO_NEIGHBORHOOD_AR = "الزيونة"
 DEMO_BLOCK = "712"
@@ -182,7 +182,7 @@ STREET_SCENARIOS: list[dict] = [
 _EVENT_TYPE = {
     "pothole": RoadEventType.POTHOLE,
     "speed_bump": RoadEventType.SPEED_BUMP,
-    "manhole": RoadEventType.MANHOLE,
+    "manhole": RoadEventType.POTHOLE,
     "traffic_violation": RoadEventType.TRAFFIC_VIOLATION,
 }
 
@@ -228,6 +228,7 @@ def _build_municipality_alerts() -> list[dict]:
                 "street": street,
                 "street_ar": street_ar,
                 "reference": f"MUN-712-{idx:03d}",
+                "detection_class": "manhole" if event_key == "manhole" else None,
             })
     return alerts
 
@@ -322,6 +323,8 @@ def _demo_event_meta(spec: dict, device: FleetDevice | None) -> dict:
         "reference": spec["reference"],
         "demo_batch": DEMO_MARKER,
     }
+    if spec.get("detection_class"):
+        meta["detection_class"] = spec["detection_class"]
     if spec.get("neighborhood"):
         meta["neighborhood"] = spec["neighborhood"]
         meta["neighborhood_ar"] = spec.get("neighborhood_ar")
@@ -621,3 +624,15 @@ async def seed_iraq_demo_for_default_project(db: AsyncSession) -> dict | None:
     if not project:
         return None
     return await seed_iraq_demo(db, project.id)
+
+
+async def ensure_project_demo_events(db: AsyncSession, project_id: uuid.UUID) -> bool:
+    """Seed demo alerts when project has no events (first load / empty DB)."""
+    count = await db.execute(
+        select(func.count(RoadEvent.id)).where(RoadEvent.project_id == project_id)
+    )
+    if (count.scalar() or 0) > 0:
+        return False
+    await seed_iraq_demo(db, project_id, force=False)
+    await db.flush()
+    return True

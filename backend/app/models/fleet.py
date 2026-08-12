@@ -51,7 +51,6 @@ class RoadEventType(str, enum.Enum):
     ACCIDENT = "accident"
     POTHOLE = "pothole"
     SPEED_BUMP = "speed_bump"
-    MANHOLE = "manhole"
     ROAD_CRACK = "road_crack"
     BARRIER = "barrier"
     ROAD_CLOSED = "road_closed"
