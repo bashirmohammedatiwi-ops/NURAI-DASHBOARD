@@ -8,7 +8,7 @@ services:
       - "9800:9800"
     environment:
       # Backend API — change if Rasid API runs elsewhere
-      API_BACKEND: ${API_BACKEND:-host.docker.internal:8000}
+      API_BACKEND: ${API_BACKEND:-host.docker.internal:9000}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped

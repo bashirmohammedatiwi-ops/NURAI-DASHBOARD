@@ -5,7 +5,7 @@
 ## التشغيل السريع (Docker — المنفذ 9800)
 
 ```bash
-# تأكد أن Rasid API يعمل على المنفذ 8000
+# تأكد أن Rasid API يعمل على المنفذ 9000
 docker compose up -d --build
 ```
 
@@ -17,12 +17,12 @@ docker compose up -d --build
 
 | المتغير | الافتراضي | الوصف |
 |---------|-----------|--------|
-| `API_BACKEND` | `host.docker.internal:8000` | عنوان Rasid API (بدون `http://`) |
+| `API_BACKEND` | `host.docker.internal:9000` | عنوان Rasid API (بدون `http://`) |
 
 مثال — API على خادم آخر:
 
 ```bash
-API_BACKEND=192.168.1.10:8000 docker compose up -d --build
+API_BACKEND=192.168.1.10:9000 docker compose up -d --build
 ```
 
 ### أوامر مفيدة
@@ -31,7 +31,7 @@ API_BACKEND=192.168.1.10:8000 docker compose up -d --build
 docker compose logs -f dashboard
 docker compose down
 docker build -t nurai-dashboard .
-docker run -p 9800:9800 -e API_BACKEND=host.docker.internal:8000 --add-host=host.docker.internal:host-gateway nurai-dashboard
+docker run -p 9800:9800 -e API_BACKEND=host.docker.internal:9000 --add-host=host.docker.internal:host-gateway nurai-dashboard
 ```
 
 ## التطوير المحلي
