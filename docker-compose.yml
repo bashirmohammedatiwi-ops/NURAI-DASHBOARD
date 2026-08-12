@@ -1,14 +1,65 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nurai-postgres
+    environment:
+      POSTGRES_USER: nurai
+      POSTGRES_PASSWORD: nurai_secret
+      POSTGRES_DB: nurai
+    volumes:
+      - nurai_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nurai -d nurai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: nurai-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nurai-api
+    env_file:
+      - ./backend/.env.example
+    environment:
+      DATABASE_URL: postgresql+asyncpg://nurai:nurai_secret@postgres:5432/nurai
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - nurai_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+
   dashboard:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: nurai-dashboard
+    environment:
+      API_BACKEND: api:9000
+    depends_on:
+      api:
+        condition: service_healthy
     ports:
       - "9800:9800"
-    environment:
-      # Backend API — change if Rasid API runs elsewhere
-      API_BACKEND: ${API_BACKEND:-host.docker.internal:9000}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     restart: unless-stopped
+
+volumes:
+  nurai_pg_data:
+  nurai_uploads:

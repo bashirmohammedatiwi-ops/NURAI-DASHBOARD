@@ -1,8 +1,4 @@
 node_modules
 dist
-.env.local
-.env
-.DS_Store
 .git
-*.md
-!README.md
+.env.local

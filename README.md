@@ -1,86 +1,86 @@
-# NURAI Dashboard — لوحة التحكم المركزية
+# NURAI Dashboard — مشروع مستقل
 
-لوحة تحكم لإدارة التنبيهات والمركبات والمحافظات العراقية ونماذج الذكاء الاصطناعي — تطبيق frontend مستقل يتصل بـ **Rasid API**.
+لوحة تحكم + API + PostgreSQL + Redis — كل شيء في `docker compose` واحد.
 
-## التشغيل السريع (Docker — المنفذ 9800)
+## التشغيل على VPS (أمر واحد)
 
 ```bash
-# تأكد أن Rasid API يعمل على المنفذ 9000
+git clone https://github.com/bashirmohammedatiwi-ops/NURAI-DASHBOARD.git
+cd NURAI-DASHBOARD
 docker compose up -d --build
 ```
 
-افتح: **http://localhost:9800/login**
+| الخدمة | المنفذ | الوصف |
+|--------|--------|--------|
+| **dashboard** | **9800** | الواجهة — http://IP:9800/login |
+| **api** | **9000** | Backend API |
+| postgres | داخلي | قاعدة البيانات |
+| redis | داخلي | WebSocket / pubsub |
 
-تسجيل الدخول الافتراضي (dev): `admin@aiops.com` / `admin123`
+**تسجيل الدخول:** `admin@aiops.com` / `admin123`
 
-### متغيرات Docker
+عند أول تشغيل يُنشئ تلقائياً:
+- مستخدم admin
+- مشروع «Road Infrastructure Monitoring»
+- **22 تنبيه + 10 مركبات** (بيانات العرض — بغداد)
 
-| المتغير | الافتراضي | الوصف |
-|---------|-----------|--------|
-| `API_BACKEND` | `host.docker.internal:9000` | عنوان Rasid API (بدون `http://`) |
-
-مثال — API على خادم آخر:
-
-```bash
-API_BACKEND=192.168.1.10:9000 docker compose up -d --build
-```
-
-### أوامر مفيدة
+## أوامر مفيدة
 
 ```bash
+docker compose ps
+docker compose logs -f api
 docker compose logs -f dashboard
 docker compose down
-docker build -t nurai-dashboard .
-docker run -p 9800:9800 -e API_BACKEND=host.docker.internal:9000 --add-host=host.docker.internal:host-gateway nurai-dashboard
+docker compose up -d --build   # بعد git pull
+```
+
+## البنية
+
+```
+NURAI-DASHBOARD/
+├── backend/           # FastAPI — API مستقل
+│   ├── app/
+│   ├── scripts/init_db.py
+│   └── Dockerfile
+├── src/               # React frontend
+├── nginx/             # proxy للإنتاج
+├── docker-compose.yml # postgres + redis + api + dashboard
+└── Dockerfile         # frontend image
 ```
 
 ## التطوير المحلي
 
 ```bash
-npm install
-cp .env.example .env.local   # اختياري
-npm run dev
+# Backend
+cd backend && pip install -r requirements.txt
+cp .env.example .env
+# عدّل DATABASE_URL لـ localhost
+python scripts/init_db.py
+PYTHONPATH=. uvicorn app.main:app --reload --port 9000
+
+# Frontend
+npm install && npm run dev
 ```
 
-يفتح Vite على **http://localhost:5174** مع proxy إلى API.
+## متغيرات Backend (`backend/.env`)
 
-## الميزات
+| المتغير | الافتراضي |
+|---------|-----------|
+| `ADMIN_EMAIL` | admin@aiops.com |
+| `ADMIN_PASSWORD` | admin123 |
+| `SECRET_KEY` | غيّره في الإنتاج |
+| `CLOUD_PREDICT_URL` | لمختبر AI (اختياري) |
 
-- **مركز العمليات** — خريطة تكتيكية، KPIs، فلاتر، تفاصيل التنبيه
-- **التنبيهات** — مصنّفة حسب الجهة (بلدية، مرور، إسعاف، …)
-- **الخريطة الحية** — WebSocket للتحديث الفوري
-- **الأسطول** — 10 مركبات بغداد (بيانات العرض)
-- **التحليلات والتقارير**
-- **مختبر AI** — اختبار YOLO على صور/فيديو
-- **نماذج AI** — رفع وتفعيل `.pt` / `.onnx`
+## API الرئيسية
 
-## API المطلوبة
-
-اللوحة تتصل بـ Rasid Backend عبر:
-
-| Endpoint | الغرض |
-|----------|--------|
-| `POST /api/v1/auth/login` | تسجيل الدخول |
-| `GET /api/v1/control-center/{project}/overview` | KPIs |
-| `GET /api/v1/road-intelligence/{project}/events` | التنبيهات |
-| `WS /api/v1/ws/road-intelligence/{project}` | تحديثات حية |
-| `GET /api/v1/fleet/{project}` | المركبات |
-| `POST /api/v1/control-center/{project}/demo/seed` | بيانات العرض |
-
-في Docker، nginx يوجّه `/api` و `/health` و `/uploads` و WebSocket إلى `API_BACKEND`.
-
-## البنية
-
-```
-├── src/              # React + TypeScript + Vite
-├── nginx/            # قالب nginx للإنتاج
-├── Dockerfile        # بناء multi-stage
-├── docker-compose.yml
-└── docker-entrypoint.sh
-```
+- `POST /api/v1/auth/login`
+- `GET /api/v1/projects`
+- `GET /api/v1/control-center/{id}/overview`
+- `GET /api/v1/road-intelligence/{id}/events`
+- `WS /api/v1/ws/road-intelligence/{id}`
+- `POST /api/v1/control-center/{id}/demo/seed`
 
 ## ملاحظات
 
-- صفحة **الإعدادات** مخفية من القائمة (إدارة النظام من Rasid Console / API).
-- تحميل **بيانات العرض** متاح من بانر «تحميل الآن» في النظرة العامة عند غياب البيانات.
-- مركز الخريطة الافتراضي: بغداد · 18 محافظة عراقية.
+- صفحة **الإعدادات** مخفية — بيانات العرض تُحمّل تلقائياً عند أول تشغيل.
+- للصور: ضع ملفات JPG في `backend/demo_images/` ثم `POST .../demo/attach-images`.
