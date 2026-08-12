@@ -2,23 +2,18 @@ import json
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.redis_client import get_redis, get_sync_redis
+from app.core.redis_client import get_redis
 from app.models import FleetDevice, RoadEvent, RoadEventType
 from app.api.schemas import RoadEventCreate
 from app.services.road.event_helpers import serialize_road_event
+from app.services.road.ws_bridge import stream_road_events
 
 router = APIRouter(tags=["road-intelligence"])
-
-
-async def _ensure_demo_events(db: AsyncSession, project_id: UUID) -> None:
-    from app.services.demo.iraq_demo_seed import ensure_project_demo_events
-
-    await ensure_project_demo_events(db, project_id)
 
 
 @router.get("/road-intelligence/{project_id}/stats")
@@ -112,8 +107,6 @@ async def road_events(
     limit: int = Query(500, le=1000),
     db: AsyncSession = Depends(get_db),
 ):
-    await _ensure_demo_events(db, project_id)
-
     query = select(RoadEvent).where(RoadEvent.project_id == project_id)
     if active_only:
         query = query.where(RoadEvent.is_active == True)
@@ -192,12 +185,4 @@ async def resolve_road_event(
 @router.websocket("/ws/road-intelligence/{project_id}")
 async def road_intelligence_ws(websocket: WebSocket, project_id: str):
     await websocket.accept()
-    pubsub = get_sync_redis().pubsub()
-    pubsub.subscribe(f"road:{project_id}")
-    try:
-        while True:
-            message = pubsub.get_message(timeout=1.0)
-            if message and message["type"] == "message":
-                await websocket.send_text(message["data"])
-    except WebSocketDisconnect:
-        pubsub.unsubscribe(f"road:{project_id}")
+    await stream_road_events(websocket, project_id)

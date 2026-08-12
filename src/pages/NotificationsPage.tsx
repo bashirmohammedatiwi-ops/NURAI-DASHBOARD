@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useNotifications } from '@/hooks/useControlCenter';
 import { useControlContext } from '@/context/ControlContext';
-import { EVENT_META, alertImageUrl } from '@/lib/constants';
+import { eventMeta, alertImageUrl } from '@/lib/constants';
 import { formatRelativeTime } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,7 @@ export default function NotificationsPage() {
       if (tab === 'done' && n.is_active) return false;
       if (q.trim()) {
         const term = q.trim();
-        const meta = EVENT_META[n.event_type];
+        const meta = eventMeta(n.event_type);
         if (!n.message.includes(term) && !meta.labelAr.includes(term) && !n.event_type.includes(term)) return false;
       }
       return true;
@@ -80,7 +80,7 @@ export default function NotificationsPage() {
 }
 
 function NotificationRow({ item: n }: { item: NotificationItem }) {
-  const meta = EVENT_META[n.event_type];
+  const meta = eventMeta(n.event_type);
   return (
     <Card className={n.is_active ? 'ring-1 ring-primary/10' : 'opacity-80'}>
       <CardContent className="flex gap-4 p-4">

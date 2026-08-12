@@ -17,6 +17,13 @@ export const EVENT_META: Record<EventType, { labelAr: string; color: string; ico
   flooded_road: { labelAr: 'فيضان', color: '#2563eb', icon: '🌊' },
 };
 
+const FALLBACK_EVENT_META = { labelAr: 'تنبيه', color: '#64748b', icon: '⚠️' };
+
+/** Safe lookup — never throws on unknown event types from API. */
+export function eventMeta(type: string) {
+  return EVENT_META[type as EventType] ?? { ...FALLBACK_EVENT_META, labelAr: type || FALLBACK_EVENT_META.labelAr };
+}
+
 export const RECIPIENT_META: Record<AlertRecipient, { labelAr: string; color: string; desc: string }> = {
   ambulance: { labelAr: 'الإسعاف', color: '#dc2626', desc: 'حوادث وإصابات' },
   police: { labelAr: 'الشرطة', color: '#4f46e5', desc: 'أمن وجرائم' },

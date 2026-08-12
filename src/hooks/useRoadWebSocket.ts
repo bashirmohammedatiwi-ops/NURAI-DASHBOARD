@@ -8,14 +8,16 @@ interface RoadWebSocketOptions {
   onStatus?: (connected: boolean) => void;
 }
 
-const MAX_RETRIES = 8;
 const BASE_DELAY_MS = 1500;
+const MAX_DELAY_MS = 30_000;
+const INVALIDATE_DEBOUNCE_MS = 750;
 
 export function useRoadWebSocket(projectId: string | null, opts?: RoadWebSocketOptions) {
   const qc = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const invalidateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onAlertRef = useRef(opts?.onAlert);
   const onStatusRef = useRef(opts?.onStatus);
   const [connected, setConnected] = useState(false);
@@ -38,6 +40,17 @@ export function useRoadWebSocket(projectId: string | null, opts?: RoadWebSocketO
       if (!cancelled) setConnected(value);
     }
 
+    function scheduleInvalidate() {
+      if (invalidateTimerRef.current) return;
+      invalidateTimerRef.current = setTimeout(() => {
+        invalidateTimerRef.current = null;
+        qc.invalidateQueries({ queryKey: ['alerts', projectId] });
+        qc.invalidateQueries({ queryKey: ['overview', projectId] });
+        qc.invalidateQueries({ queryKey: ['notifications', projectId] });
+        qc.invalidateQueries({ queryKey: ['roadStats', projectId] });
+      }, INVALIDATE_DEBOUNCE_MS);
+    }
+
     function connect() {
       if (cancelled) return;
       setLive(false);
@@ -53,10 +66,7 @@ export function useRoadWebSocket(projectId: string | null, opts?: RoadWebSocketO
       ws.onmessage = (ev) => {
         try {
           const payload = JSON.parse(ev.data) as RoadAlert & { action?: string };
-          qc.invalidateQueries({ queryKey: ['alerts', projectId] });
-          qc.invalidateQueries({ queryKey: ['overview', projectId] });
-          qc.invalidateQueries({ queryKey: ['notifications', projectId] });
-          qc.invalidateQueries({ queryKey: ['roadStats', projectId] });
+          scheduleInvalidate();
           if (payload.action === 'resolved') {
             qc.setQueryData<RoadAlert[]>(['alerts', projectId, { activeOnly: true }], (old) =>
               old?.filter((a) => a.id !== payload.id) ?? old,
@@ -72,8 +82,8 @@ export function useRoadWebSocket(projectId: string | null, opts?: RoadWebSocketO
       ws.onclose = () => {
         wsRef.current = null;
         setLive(false);
-        if (cancelled || retryRef.current >= MAX_RETRIES) return;
-        const delay = Math.min(BASE_DELAY_MS * 2 ** retryRef.current, 30_000);
+        if (cancelled) return;
+        const delay = Math.min(BASE_DELAY_MS * 2 ** retryRef.current, MAX_DELAY_MS);
         retryRef.current += 1;
         timerRef.current = setTimeout(connect, delay);
       };
@@ -88,6 +98,7 @@ export function useRoadWebSocket(projectId: string | null, opts?: RoadWebSocketO
     return () => {
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (invalidateTimerRef.current) clearTimeout(invalidateTimerRef.current);
       wsRef.current?.close();
       wsRef.current = null;
       setConnected(false);

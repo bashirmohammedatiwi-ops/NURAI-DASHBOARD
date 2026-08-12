@@ -10,7 +10,7 @@ import { useAlerts, useFleet, useOverview, useResolveAlert, useRoadStats } from 
 import { useCommandFilters } from '@/hooks/useCommandFilters';
 import { useControlContext } from '@/context/ControlContext';
 import { usePreferences, useShowFleetOnMap } from '@/context/PreferencesContext';
-import { EVENT_META, IRAQ_GOVERNORATES } from '@/lib/constants';
+import { eventMeta, IRAQ_GOVERNORATES } from '@/lib/constants';
 import { avgConfidence } from '@/lib/analytics';
 import { AlertTriangle, Car, TrendingUp, Zap } from 'lucide-react';
 import type { RoadAlert } from '@/types';
@@ -252,7 +252,7 @@ export default function CommandCenterPage() {
         <p className="mb-2 text-xs font-bold text-foreground">التنبيهات ({filtered.length})</p>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {filtered.slice(0, 14).map((a) => {
-            const meta = EVENT_META[a.event_type];
+            const meta = eventMeta(a.event_type);
             return (
               <button
                 key={a.id}

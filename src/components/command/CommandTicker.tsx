@@ -1,5 +1,5 @@
 import { Bell, ChevronLeft } from 'lucide-react';
-import { EVENT_META } from '@/lib/constants';
+import { eventMeta } from '@/lib/constants';
 import { alertPopupLines } from '@/lib/alertMeta';
 import { formatRelativeTime } from '@/lib/utils';
 import type { RoadAlert } from '@/types';
@@ -25,7 +25,7 @@ export function CommandTicker({ alerts, onSelect }: CommandTickerProps) {
       <div className="overflow-hidden py-2.5">
         <div className="command-ticker flex w-max gap-8 whitespace-nowrap px-4 text-xs text-foreground">
           {doubled.map((a, i) => {
-            const meta = EVENT_META[a.event_type];
+            const meta = eventMeta(a.event_type);
             const popup = alertPopupLines(a);
             return (
               <button

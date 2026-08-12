@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { loadPreferences } from '@/lib/preferences';
 import { initTheme } from '@/lib/theme';
-import { EVENT_META } from '@/lib/constants';
+import { eventMeta } from '@/lib/constants';
 import type { RoadAlert } from '@/types';
 
 function LayoutInner() {
@@ -51,7 +51,7 @@ function LayoutInner() {
   const wsConnected = useRoadWebSocket(resolvedProjectId || null, {
     onAlert: (alert: RoadAlert) => {
       const prefs = loadPreferences();
-      const meta = EVENT_META[alert.event_type];
+      const meta = eventMeta(alert.event_type);
       const urgent = alert.event_type === 'accident';
       if (prefs.soundAlerts) {
         try {

@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import L from 'leaflet';
 import type { RoadAlert } from '@/types';
 import type { FleetDevice } from '@/types';
-import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, EVENT_META } from '@/lib/constants';
+import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, eventMeta } from '@/lib/constants';
 import { alertPopupLines } from '@/lib/alertMeta';
 import { useShowFleetOnMap } from '@/context/PreferencesContext';
 import 'leaflet/dist/leaflet.css';
@@ -53,7 +53,7 @@ export function LiveMap({ alerts, vehicles = [], height = '520px', selectedId, o
         />
         {alerts.length > 1 && <FitBounds alerts={alerts} />}
         {alerts.map((a) => {
-          const meta = EVENT_META[a.event_type];
+          const meta = eventMeta(a.event_type);
           const selected = selectedId === a.id;
           const popup = alertPopupLines(a);
           return (

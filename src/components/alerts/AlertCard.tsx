@@ -99,7 +99,7 @@ export function AlertDetailPanel({ alert, onClose, onResolve, resolving, project
   resolving?: boolean;
   projectId?: string;
 }) {
-  const meta = EVENT_META[alert.event_type];
+  const meta = EVENT_META[alert.event_type] ?? { labelAr: alert.event_type, color: '#64748b', icon: '⚠️' };
   const gov = governorateName(alert.municipality_id ?? guessGovernorate(alert.latitude, alert.longitude));
   const upload = useUploadAlertEvidence(projectId ?? '');
   const { toast } = useToast();

@@ -2,7 +2,7 @@ import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Marker, ZoomContr
 import { useEffect, useMemo } from 'react';
 import L from 'leaflet';
 import type { RoadAlert, FleetDevice } from '@/types';
-import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, EVENT_META } from '@/lib/constants';
+import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, eventMeta } from '@/lib/constants';
 import { alertPopupLines } from '@/lib/alertMeta';
 import { cn } from '@/lib/utils';
 import 'leaflet/dist/leaflet.css';
@@ -77,7 +77,7 @@ function SelectedAlertLayer({ alert }: { alert: RoadAlert | null | undefined }) 
       map.closePopup();
       return;
     }
-    const meta = EVENT_META[alert.event_type];
+    const meta = eventMeta(alert.event_type);
     const popup = alertPopupLines(alert);
     const html = `<div class="command-selected-popup">
       <span class="command-selected-popup-type" style="color:${meta.color}">${meta.icon} ${meta.labelAr}</span>
@@ -100,7 +100,7 @@ function SelectedAlertLayer({ alert }: { alert: RoadAlert | null | undefined }) 
 
   if (!alert) return null;
 
-  const color = EVENT_META[alert.event_type].color;
+  const color = eventMeta(alert.event_type).color;
 
   return (
     <>
@@ -206,7 +206,7 @@ export function CommandMap({
               radius={26}
               pathOptions={{
                 color: 'transparent',
-                fillColor: EVENT_META[a.event_type].color,
+                fillColor: eventMeta(a.event_type).color,
                 fillOpacity: 0.1,
                 weight: 0,
               }}
@@ -214,7 +214,7 @@ export function CommandMap({
           ))}
 
         {alerts.map((a) => {
-          const meta = EVENT_META[a.event_type];
+          const meta = eventMeta(a.event_type);
           const selected = selectedId === a.id;
           const critical = a.event_type === 'accident' || a.event_type === 'traffic_violation';
           const popup = alertPopupLines(a);
@@ -250,7 +250,7 @@ export function CommandMap({
         <div className="command-map-focus-badge pointer-events-none absolute right-3 top-3 z-[1000] max-w-[220px] rounded-lg border border-primary/25 bg-card/95 px-3 py-2 text-xs shadow-lg backdrop-blur">
           <p className="font-bold text-primary">📍 موقع محدّد</p>
           <p className="mt-0.5 truncate font-medium text-foreground">
-            {focusAlert.title ?? EVENT_META[focusAlert.event_type].labelAr}
+            {focusAlert.title ?? eventMeta(focusAlert.event_type).labelAr}
           </p>
         </div>
       )}
