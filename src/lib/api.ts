@@ -29,6 +29,10 @@ class ApiClient {
     localStorage.removeItem(REFRESH_KEY);
   }
 
+  clearProjectId() {
+    localStorage.removeItem(PROJECT_KEY);
+  }
+
   getProjectId(): string | null {
     return localStorage.getItem(PROJECT_KEY);
   }

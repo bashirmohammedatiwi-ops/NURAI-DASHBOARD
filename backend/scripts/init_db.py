@@ -43,6 +43,8 @@ async def init_db() -> None:
     except Exception as exc:
         print(f"create_all warning: {exc}", file=sys.stderr)
 
+    project_id_for_seed: uuid.UUID | None = None
+
     try:
         async with async_session() as db:
             org_result = await db.execute(select(Organization).limit(1))
@@ -81,6 +83,7 @@ async def init_db() -> None:
                 await db.flush()
                 print(f"Created project: {project.name}")
 
+            project_id_for_seed = project.id
             await db.commit()
     except Exception as exc:
         print(f"Admin/project setup error: {exc}", file=sys.stderr)
@@ -88,7 +91,12 @@ async def init_db() -> None:
 
     try:
         async with async_session() as db:
-            seed_result = await seed_iraq_demo_for_default_project(db)
+            from app.services.demo.iraq_demo_seed import seed_iraq_demo
+
+            if project_id_for_seed:
+                seed_result = await seed_iraq_demo(db, project_id_for_seed)
+            else:
+                seed_result = await seed_iraq_demo_for_default_project(db)
             if seed_result:
                 await db.commit()
                 print(f"Demo seed: {seed_result}")

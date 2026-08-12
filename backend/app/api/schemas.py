@@ -21,6 +21,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     role: str
+    default_project_id: str | None = None
 
     model_config = {"from_attributes": True}
 

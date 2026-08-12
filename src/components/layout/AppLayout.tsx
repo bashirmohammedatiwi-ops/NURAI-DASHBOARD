@@ -1,5 +1,5 @@
 import { Outlet, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { SystemStatusBar } from './SystemStatusBar';
 import { useProjects } from '@/hooks/useControlCenter';
@@ -25,6 +25,12 @@ function LayoutInner() {
   const [projectId, setProjectId] = useState(api.getProjectId() ?? '');
   const [mobileNav, setMobileNav] = useState(false);
 
+  const resolvedProjectId = useMemo(() => {
+    if (!projects.length) return '';
+    if (projectId && projects.some((p) => p.id === projectId)) return projectId;
+    return projects[0].id;
+  }, [projects, projectId]);
+
   useEffect(() => {
     initTheme();
     if (!localStorage.getItem('rasid_cc_token')) navigate('/login', { replace: true });
@@ -36,14 +42,12 @@ function LayoutInner() {
   }, []);
 
   useEffect(() => {
-    if (!projectId && projects.length) {
-      const id = projects[0].id;
-      setProjectId(id);
-      api.setProjectId(id);
-    }
-  }, [projects, projectId]);
+    if (!resolvedProjectId) return;
+    if (resolvedProjectId !== projectId) setProjectId(resolvedProjectId);
+    if (api.getProjectId() !== resolvedProjectId) api.setProjectId(resolvedProjectId);
+  }, [resolvedProjectId, projectId]);
 
-  const wsConnected = useRoadWebSocket(projectId || null, {
+  const wsConnected = useRoadWebSocket(resolvedProjectId || null, {
     onAlert: (alert: RoadAlert) => {
       const prefs = loadPreferences();
       const meta = EVENT_META[alert.event_type];
@@ -88,6 +92,17 @@ function LayoutInner() {
     );
   }
 
+  if (!resolvedProjectId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center animate-fade-in">
+          <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">جاري تحضير المشروع...</p>
+        </div>
+      </div>
+    );
+  }
+
   const handleSetProject = (id: string) => {
     setProjectId(id);
     api.setProjectId(id);
@@ -95,7 +110,7 @@ function LayoutInner() {
 
   return (
     <PreferencesProvider>
-      <ControlProvider projectId={projectId} setProjectId={handleSetProject} wsConnected={wsConnected}>
+      <ControlProvider projectId={resolvedProjectId} setProjectId={handleSetProject} wsConnected={wsConnected}>
         <LayoutProvider openMobileNav={() => setMobileNav(true)}>
           <div className="flex min-h-screen">
             <Sidebar mobileOpen={mobileNav} onMobileClose={() => setMobileNav(false)} />
@@ -103,7 +118,7 @@ function LayoutInner() {
               <ErrorBoundary>
                 <Outlet />
               </ErrorBoundary>
-              {!hideStatusBar && <SystemStatusBar projectId={projectId} />}
+              {!hideStatusBar && <SystemStatusBar projectId={resolvedProjectId} />}
             </main>
           </div>
           <CommandPalette />

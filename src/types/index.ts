@@ -83,7 +83,7 @@ export interface CurrentUser {
   email: string;
   full_name: string;
   role: string;
-  is_active: boolean;
+  default_project_id?: string | null;
 }
 
 export interface RoadStats {

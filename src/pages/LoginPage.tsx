@@ -27,6 +27,13 @@ export default function LoginPage() {
         { username: email.trim(), password },
       );
       api.setSession(data.access_token, data.refresh_token);
+      api.clearProjectId();
+      try {
+        const me = await api.get<{ default_project_id?: string | null }>('/api/v1/auth/me');
+        if (me.default_project_id) api.setProjectId(me.default_project_id);
+      } catch {
+        /* project will resolve from /projects in AppLayout */
+      }
       navigate('/', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'فشل تسجيل الدخول');

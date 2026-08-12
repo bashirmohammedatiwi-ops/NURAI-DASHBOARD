@@ -9,7 +9,7 @@ from app.api.deps import get_current_user
 from app.api.schemas import LoginRequest, RefreshRequest, TokenResponse, UserResponse
 from app.core.database import get_db
 from app.core.security import create_access_token, create_refresh_token, decode_token, verify_password
-from app.models import Organization, User, UserRole
+from app.models import Organization, Project, User, UserRole
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -46,10 +46,18 @@ async def refresh_tokens(data: RefreshRequest, db: AsyncSession = Depends(get_db
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(user: User = Depends(get_current_user)):
+async def me(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    project_result = await db.execute(
+        select(Project)
+        .where(Project.organization_id == user.organization_id)
+        .order_by(Project.created_at)
+        .limit(1)
+    )
+    project = project_result.scalar_one_or_none()
     return UserResponse(
         id=str(user.id),
         email=user.email,
         full_name=user.full_name,
         role=user.role.value,
+        default_project_id=str(project.id) if project else None,
     )

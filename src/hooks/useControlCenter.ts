@@ -60,6 +60,7 @@ export function useAlerts(projectId: string, opts?: { activeOnly?: boolean; reci
     queryFn: () => api.get<RoadAlert[]>(`/api/v1/road-intelligence/${projectId}/events?${params}`),
     enabled: !!projectId,
     refetchInterval,
+    placeholderData: [],
   });
 }
 
