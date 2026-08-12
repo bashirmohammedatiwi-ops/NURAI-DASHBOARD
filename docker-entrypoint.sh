@@ -1,8 +1,9 @@
 #!/bin/sh
 set -eu
 
-export API_BACKEND="${API_BACKEND:-api:9000}"
-
-envsubst '${API_BACKEND}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf
+# nginx config uses fixed upstream api:9000 (Docker Compose service name)
+if [ -f /etc/nginx/templates/default.conf.template ]; then
+  cp /etc/nginx/templates/default.conf.template /etc/nginx/conf.d/default.conf
+fi
 
 exec "$@"

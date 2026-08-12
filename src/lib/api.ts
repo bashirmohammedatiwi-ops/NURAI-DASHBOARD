@@ -80,7 +80,11 @@ class ApiClient {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(formatError(err.detail, res.statusText));
+      const msg = formatError(err.detail, res.statusText);
+      if (res.status === 502 || res.status === 503) {
+        throw new Error('الخادم غير جاهز — انتظر دقيقة ثم أعد المحاولة (502)');
+      }
+      throw new Error(msg);
     }
     if (res.status === 204) return {} as T;
     return res.json();

@@ -37,47 +37,54 @@ async def init_db() -> None:
     settings = get_settings()
     await wait_for_db()
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as exc:
+        print(f"create_all warning: {exc}", file=sys.stderr)
 
-    async with async_session() as db:
-        org_result = await db.execute(select(Organization).limit(1))
-        org = org_result.scalar_one_or_none()
-        if not org:
-            org = Organization(name="NURAI Operations")
-            db.add(org)
-            await db.flush()
+    try:
+        async with async_session() as db:
+            org_result = await db.execute(select(Organization).limit(1))
+            org = org_result.scalar_one_or_none()
+            if not org:
+                org = Organization(name="NURAI Operations")
+                db.add(org)
+                await db.flush()
 
-        user_result = await db.execute(select(User).where(User.email == settings.admin_email))
-        admin = user_result.scalar_one_or_none()
-        if not admin:
-            admin = User(
-                organization_id=org.id,
-                email=settings.admin_email,
-                hashed_password=hash_password(settings.admin_password),
-                full_name="NURAI Admin",
-                role=UserRole.ADMIN,
+            user_result = await db.execute(select(User).where(User.email == settings.admin_email))
+            admin = user_result.scalar_one_or_none()
+            if not admin:
+                admin = User(
+                    organization_id=org.id,
+                    email=settings.admin_email,
+                    hashed_password=hash_password(settings.admin_password),
+                    full_name="NURAI Admin",
+                    role=UserRole.ADMIN,
+                )
+                db.add(admin)
+                await db.flush()
+                print(f"Created admin: {settings.admin_email}")
+
+            project_result = await db.execute(
+                select(Project).where(Project.name == ROAD_PROJECT["name"], Project.organization_id == org.id)
             )
-            db.add(admin)
-            await db.flush()
-            print(f"Created admin: {settings.admin_email}")
+            project = project_result.scalar_one_or_none()
+            if not project:
+                project = Project(
+                    organization_id=org.id,
+                    name=ROAD_PROJECT["name"],
+                    description=ROAD_PROJECT["description"],
+                    domain=ROAD_PROJECT["domain"],
+                )
+                db.add(project)
+                await db.flush()
+                print(f"Created project: {project.name}")
 
-        project_result = await db.execute(
-            select(Project).where(Project.name == ROAD_PROJECT["name"], Project.organization_id == org.id)
-        )
-        project = project_result.scalar_one_or_none()
-        if not project:
-            project = Project(
-                organization_id=org.id,
-                name=ROAD_PROJECT["name"],
-                description=ROAD_PROJECT["description"],
-                domain=ROAD_PROJECT["domain"],
-            )
-            db.add(project)
-            await db.flush()
-            print(f"Created project: {project.name}")
-
-        await db.commit()
+            await db.commit()
+    except Exception as exc:
+        print(f"Admin/project setup error: {exc}", file=sys.stderr)
+        traceback.print_exc()
 
     try:
         async with async_session() as db:

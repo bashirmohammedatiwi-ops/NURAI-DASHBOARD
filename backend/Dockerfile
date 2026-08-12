@@ -9,12 +9,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN chmod +x docker-entrypoint.sh
+
 ENV PYTHONPATH=/app
 ENV APP_ENV=production
 
 EXPOSE 9000
 
-HEALTHCHECK --interval=10s --timeout=8s --retries=12 --start-period=90s \
+HEALTHCHECK --interval=10s --timeout=8s --retries=18 --start-period=120s \
   CMD curl -f http://127.0.0.1:9000/health/ready || exit 1
 
-CMD ["sh", "-c", "python scripts/init_db.py && uvicorn app.main:app --host 0.0.0.0 --port 9000"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
