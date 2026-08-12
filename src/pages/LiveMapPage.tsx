@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { TopBar } from '@/components/layout/TopBar';
 import { LiveMap } from '@/components/map/LiveMap';
 import { AlertCard, AlertDetailPanel } from '@/components/alerts/AlertCard';
@@ -14,11 +14,19 @@ export default function LiveMapPage() {
   const { data: alertsRaw = [] } = useAlerts(projectId, { activeOnly: true });
   const { data: fleet = [] } = useFleet(projectId);
   const resolve = useResolveAlert(projectId);
-  const [selected, setSelected] = useState<RoadAlert | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const showFleet = useShowFleetOnMap();
   const alerts = filterAlerts(alertsRaw, governorateFilter, searchQuery, guessGovernorate);
   const mapVehicles = showFleet ? fleet : [];
+  const selected = useMemo(
+    () => (selectedId ? alerts.find((a) => a.id === selectedId) ?? null : null),
+    [selectedId, alerts],
+  );
+
+  const handleSelect = (alert: RoadAlert | null) => {
+    setSelectedId(alert?.id ?? null);
+  };
 
   return (
     <div className="page-shell">
@@ -30,14 +38,14 @@ export default function LiveMapPage() {
       />
 
       <div className="grid flex-1 gap-4 p-6 xl:grid-cols-[1fr_360px]">
-        <LiveMap alerts={alerts} vehicles={mapVehicles} height="calc(100vh - 200px)" selectedId={selected?.id} onSelect={setSelected} zoom={6} />
+        <LiveMap alerts={alerts} vehicles={mapVehicles} height="calc(100vh - 200px)" selectedId={selectedId} onSelect={handleSelect} zoom={6} />
 
         <div className="space-y-3 overflow-auto">
           {selected ? (
             <AlertDetailPanel
               alert={selected}
-              onClose={() => setSelected(null)}
-              onResolve={(id) => { resolve.mutate(id); setSelected(null); }}
+              onClose={() => setSelectedId(null)}
+              onResolve={(id) => { resolve.mutate(id); setSelectedId(null); }}
               resolving={resolve.isPending}
               projectId={projectId}
             />
@@ -45,7 +53,7 @@ export default function LiveMapPage() {
             <>
               <p className="text-sm font-semibold text-muted-foreground">اختر تنبيهاً من الخريطة</p>
               {alerts.slice(0, 8).map((a) => (
-                <AlertCard key={a.id} alert={a} compact onSelect={setSelected} />
+                <AlertCard key={a.id} alert={a} compact onSelect={handleSelect} />
               ))}
             </>
           )}

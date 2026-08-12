@@ -28,7 +28,7 @@ export default function CommandCenterPage() {
   const filters = useCommandFilters(alertsRaw);
   const { filtered, stats: filterStats } = filters;
 
-  const [selected, setSelected] = useState<RoadAlert | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
@@ -37,6 +37,11 @@ export default function CommandCenterPage() {
   const showFleet = useShowFleetOnMap();
   const setShowFleet = (value: boolean) => updatePreferences({ showFleetOnMap: value });
   const [mapFocusPoint, setMapFocusPoint] = useState<MapFocusPoint | null>(null);
+
+  const selected = useMemo(
+    () => (selectedId ? filtered.find((a) => a.id === selectedId) ?? null : null),
+    [selectedId, filtered],
+  );
 
   const avgAgeMinutes = useMemo(() => {
     if (!filtered.length) return null;
@@ -48,7 +53,7 @@ export default function CommandCenterPage() {
   const confidence = avgConfidence(filtered);
 
   const selectAlert = useCallback((alert: RoadAlert | null) => {
-    setSelected(alert);
+    setSelectedId(alert?.id ?? null);
     setMapFocusPoint(null);
     if (alert && !rightOpen) setRightOpen(true);
   }, [rightOpen]);
@@ -57,7 +62,7 @@ export default function CommandCenterPage() {
     const gov = IRAQ_GOVERNORATES.find((g) => g.id === govId);
     if (!gov) return;
     filters.setGovernorate(govId);
-    setSelected(null);
+    setSelectedId(null);
     setMapFocusPoint({ lat: gov.center[0], lng: gov.center[1], zoom: 9 });
   }, [filters]);
 
@@ -80,7 +85,7 @@ export default function CommandCenterPage() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (selected) setSelected(null);
+        if (selectedId) setSelectedId(null);
         else if (document.fullscreenElement) document.exitFullscreen();
       }
       if (e.key === 'f' && !e.metaKey && !e.ctrlKey && !(e.target instanceof HTMLInputElement)) {
@@ -97,7 +102,7 @@ export default function CommandCenterPage() {
   const handleResolve = (id: string) => {
     resolve.mutate(id, {
       onSuccess: () => {
-        if (selected?.id === id) setSelected(null);
+        if (selectedId === id) setSelectedId(null);
       },
     });
   };
@@ -190,8 +195,7 @@ export default function CommandCenterPage() {
           <CommandMap
             alerts={filtered}
             vehicles={showFleet ? fleet : []}
-            selectedId={selected?.id}
-            selectedAlert={selected}
+            selectedId={selectedId}
             focusPoint={mapFocusPoint}
             onSelect={selectAlert}
             showHeat={showHeat}
@@ -240,7 +244,7 @@ export default function CommandCenterPage() {
         <div className="fixed inset-x-0 bottom-0 z-50 max-h-[88vh] overflow-auto border-t border-border bg-background shadow-2xl lg:hidden">
           <AlertDetailPanel
             alert={selected}
-            onClose={() => setSelected(null)}
+            onClose={() => setSelectedId(null)}
             onResolve={handleResolve}
             resolving={resolve.isPending}
             projectId={projectId}

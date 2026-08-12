@@ -4,41 +4,11 @@ import L from 'leaflet';
 import type { RoadAlert, FleetDevice } from '@/types';
 import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, eventMeta } from '@/lib/constants';
 import { alertPopupLines } from '@/lib/alertMeta';
+import { MapFocusController, type MapFocusPoint } from '@/components/map/MapFocusController';
 import { cn } from '@/lib/utils';
 import 'leaflet/dist/leaflet.css';
 
-export interface MapFocusPoint {
-  lat: number;
-  lng: number;
-  zoom: number;
-}
-
-/** Fly to alert or point whenever selection / focus changes */
-function MapFocusController({
-  alert,
-  point,
-}: {
-  alert: RoadAlert | null | undefined;
-  point: MapFocusPoint | null | undefined;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (alert) {
-      const zoom = alert.event_type === 'accident' ? 17 : alert.event_type === 'traffic_violation' ? 16 : 15;
-      map.flyTo([alert.latitude, alert.longitude], zoom, {
-        duration: 0.55,
-        easeLinearity: 0.22,
-      });
-      return;
-    }
-    if (point) {
-      map.flyTo([point.lat, point.lng], point.zoom, { duration: 0.7, easeLinearity: 0.25 });
-    }
-  }, [alert?.id, alert?.latitude, alert?.longitude, point?.lat, point?.lng, point?.zoom, map]);
-
-  return null;
-}
+export type { MapFocusPoint };
 
 /** Fit all alerts when nothing is selected */
 function FitAlertsOverview({ alerts, enabled }: { alerts: RoadAlert[]; enabled: boolean }) {
@@ -50,6 +20,7 @@ function FitAlertsOverview({ alerts, enabled }: { alerts: RoadAlert[]; enabled: 
 
   useEffect(() => {
     if (!enabled || alerts.length === 0) return;
+    map.stop();
     if (alerts.length === 1) {
       map.flyTo([alerts[0].latitude, alerts[0].longitude], 14, { duration: 0.5 });
       return;
@@ -176,7 +147,7 @@ export function CommandMap({
     ? ([alerts[0].latitude, alerts[0].longitude] as [number, number])
     : DEFAULT_MAP_CENTER;
 
-  const focusAlert = selectedAlert ?? alerts.find((a) => a.id === selectedId) ?? null;
+  const focusAlert = alerts.find((a) => a.id === selectedId) ?? selectedAlert ?? null;
 
   return (
     <div className={cn('command-map-root h-full w-full', className)}>
@@ -195,7 +166,12 @@ export function CommandMap({
         <ZoomControl position="bottomleft" />
 
         <FitAlertsOverview alerts={alerts} enabled={autoFit && !focusAlert} />
-        <MapFocusController alert={focusAlert} point={focusPoint} />
+        <MapFocusController
+          alert={focusAlert}
+          point={focusPoint}
+          paddingTopLeft={[300, 120]}
+          paddingBottomRight={[380, 80]}
+        />
         <SelectedAlertLayer alert={focusAlert} />
 
         {showHeat &&

@@ -17,8 +17,17 @@ from app.models import FleetDevice, Project, RoadEvent, RoadEventType
 from app.models.fleet import DeviceTelemetry
 from app.services.road.event_helpers import default_recipient
 
-DEMO_MARKER = "rasid_iraq_demo_v8"
-LEGACY_DEMO_MARKERS = ("rasid_iraq_demo_v1", "rasid_iraq_demo_v2", "rasid_iraq_demo_v3", "rasid_iraq_demo_v4", "rasid_iraq_demo_v5", "rasid_iraq_demo_v6", "rasid_iraq_demo_v7")
+DEMO_MARKER = "rasid_iraq_demo_v9"
+LEGACY_DEMO_MARKERS = (
+    "rasid_iraq_demo_v1",
+    "rasid_iraq_demo_v2",
+    "rasid_iraq_demo_v3",
+    "rasid_iraq_demo_v4",
+    "rasid_iraq_demo_v5",
+    "rasid_iraq_demo_v6",
+    "rasid_iraq_demo_v7",
+    "rasid_iraq_demo_v8",
+)
 DEMO_NEIGHBORHOOD = "zayouna"
 DEMO_NEIGHBORHOOD_AR = "الزيونة"
 DEMO_BLOCK = "712"
@@ -46,16 +55,16 @@ FLEET_VEHICLES: list[dict] = [
     {"device_id": "rasid-bgd-10", "vehicle_id": "RASID-BGD-10", "gov": "baghdad", "lat": 33.2430000, "lng": 44.3940000, "online": False, "neighborhood_ar": "الدور"},
 ]
 
-# Points sampled along OSM highway centerlines — on the road, not block centroids
+# OSM centerline samples — mid-street only (avoid intersections + شارع الربيعي)
 STREET_ON_ROAD_POINTS: dict[str, list[tuple[float, float]]] = {
-    "712-6": [(33.3209604, 44.4472993), (33.3204061, 44.4480162), (33.3198835, 44.4486922), (33.3193685, 44.4493582)],
-    "712-8": [(33.3219290, 44.4483501), (33.3213578, 44.4490670), (33.3208314, 44.4497259), (33.3203018, 44.4503880)],
-    "712-12": [(33.3232290, 44.4497840), (33.3227326, 44.4504272), (33.3221570, 44.4511718), (33.3216298, 44.4518535)],
-    "712-20": [(33.3262504, 44.4531449), (33.3256831, 44.4538772), (33.3251653, 44.4545456), (33.3246601, 44.4551977)],
-    "712-18": [(33.3232225, 44.4548032), (33.3237235, 44.4541641), (33.3242347, 44.4535121), (33.3247649, 44.4528357)],
-    "712-7": [(33.3170897, 44.4480132), (33.3194050, 44.4505766), (33.3216746, 44.4530894), (33.3245234, 44.4562436)],
-    "712-22": [(33.3245234, 44.4562436), (33.3247657, 44.4559127), (33.3248869, 44.4557472), (33.3250081, 44.4555817)],
-    "712-23": [(33.3234786, 44.4513770), (33.3247649, 44.4528357), (33.3256831, 44.4538772), (33.3266171, 44.4549363)],
+    "712-6": [(33.3202600, 44.4488812)],
+    "712-8": [(33.3210998, 44.4500489)],
+    "712-12": [(33.3226057, 44.4513360), (33.3221418, 44.4518732)],
+    "712-20": [(33.3255030, 44.4547781), (33.3250895, 44.4552956)],
+    "712-18": [(33.3238703, 44.4533249), (33.3241634, 44.4529510)],
+    "712-7": [(33.3199145, 44.4536535), (33.3209553, 44.4548058), (33.3218473, 44.4564348), (33.3228137, 44.4575048)],
+    "712-22": [(33.3247464, 44.4556082), (33.3248675, 44.4556081)],
+    "712-23": [(33.3247654, 44.4538778), (33.3252048, 44.4543761), (33.3256441, 44.4548745), (33.3260521, 44.4553548)],
     "714-20": [(33.3251805, 44.4491742), (33.3262306, 44.4478347), (33.3272950, 44.4464768)],
 }
 
@@ -73,21 +82,21 @@ STREET_SCENARIOS: list[dict] = [
         "street": "712-6",
         "street_ar": "712-6",
         "events": [
-            ("speed_bump", "مطب — بداية الشارع", "medium", 0.88, 0),
+            ("speed_bump", "مطب — أمام مدخل عمارة", "medium", 0.88, 0),
         ],
     },
     {
         "street": "712-8",
         "street_ar": "712-8",
         "events": [
-            ("pothole", "حفرة — على الشارع", "high", 0.91, 0),
+            ("pothole", "حفرة — وسط الشارع", "high", 0.91, 0),
         ],
     },
     {
         "street": "712-12",
         "street_ar": "712-12",
         "events": [
-            ("speed_bump", "مطب — قرب التقاطع", "medium", 0.86, 0),
+            ("speed_bump", "مطب — أمام محل تجاري", "medium", 0.86, 0),
             ("manhole", "بالوعة — على الشارع", "medium", 0.88, 1),
         ],
     },
@@ -95,7 +104,7 @@ STREET_SCENARIOS: list[dict] = [
         "street": "712-20",
         "street_ar": "712-20",
         "events": [
-            ("pothole", "حفرة — قرب تقاطع", "high", 0.92, 0),
+            ("pothole", "حفرة — على الشارع", "high", 0.92, 0),
             ("speed_bump", "مطب — أمام عمارة", "medium", 0.85, 1),
         ],
     },
@@ -111,10 +120,10 @@ STREET_SCENARIOS: list[dict] = [
         "street": "712-7",
         "street_ar": "712-7",
         "events": [
-            ("speed_bump", "مطب — بداية الشارع", "medium", 0.84, 0),
-            ("speed_bump", "مطب — أمام محل", "medium", 0.83, 1),
+            ("speed_bump", "مطب — أمام محل", "medium", 0.84, 0),
+            ("speed_bump", "مطب — بعد مطب قديم", "medium", 0.83, 1),
             ("pothole", "حفرة — وسط الشارع", "high", 0.90, 2),
-            ("manhole", "بالوعة — منتصف الشارع", "medium", 0.89, 3),
+            ("manhole", "بالوعة — على الشارع", "medium", 0.89, 3),
         ],
     },
     {
@@ -122,17 +131,17 @@ STREET_SCENARIOS: list[dict] = [
         "street_ar": "712-22",
         "events": [
             ("speed_bump", "مطب — على الشارع", "medium", 0.85, 0),
-            ("speed_bump", "مطب — ثانٍ", "low", 0.82, 1),
+            ("speed_bump", "مطب — أمام جامع", "low", 0.82, 1),
         ],
     },
     {
         "street": "712-23",
         "street_ar": "712-23",
         "events": [
-            ("speed_bump", "مطب — بداية الشارع", "medium", 0.87, 0),
+            ("speed_bump", "مطب — أمام عمارة", "medium", 0.87, 0),
             ("speed_bump", "مطب — أمام جامع", "medium", 0.86, 1),
             ("manhole", "بالوعة — على الشارع", "medium", 0.88, 2),
-            ("manhole", "بالوعة — قرب مطب", "medium", 0.87, 3),
+            ("manhole", "بالوعة — مجاورة لمطب", "medium", 0.87, 3),
         ],
     },
     {

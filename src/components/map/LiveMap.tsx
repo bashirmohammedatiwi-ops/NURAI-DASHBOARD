@@ -1,24 +1,31 @@
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Marker } from 'react-leaflet';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import L from 'leaflet';
 import type { RoadAlert } from '@/types';
 import type { FleetDevice } from '@/types';
 import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, eventMeta } from '@/lib/constants';
 import { alertPopupLines } from '@/lib/alertMeta';
+import { MapFocusController } from '@/components/map/MapFocusController';
 import { useShowFleetOnMap } from '@/context/PreferencesContext';
 import 'leaflet/dist/leaflet.css';
 
-function FitBounds({ alerts }: { alerts: RoadAlert[] }) {
+function FitBounds({ alerts, enabled }: { alerts: RoadAlert[]; enabled: boolean }) {
   const map = useMap();
+  const boundsKey = useMemo(
+    () => alerts.map((a) => `${a.id}:${a.latitude.toFixed(5)}`).join('|'),
+    [alerts],
+  );
+
   useEffect(() => {
-    if (alerts.length < 2) return;
+    if (!enabled || alerts.length < 2) return;
+    map.stop();
     const lats = alerts.map((a) => a.latitude);
     const lngs = alerts.map((a) => a.longitude);
     map.fitBounds([
       [Math.min(...lats), Math.min(...lngs)],
       [Math.max(...lats), Math.max(...lngs)],
     ], { padding: [48, 48], maxZoom: 12 });
-  }, [alerts, map]);
+  }, [enabled, boundsKey, alerts, map]);
   return null;
 }
 
@@ -43,6 +50,7 @@ export function LiveMap({ alerts, vehicles = [], height = '520px', selectedId, o
     ? [alerts[0].latitude, alerts[0].longitude] as [number, number]
     : DEFAULT_MAP_CENTER;
   const fleetVisible = useShowFleetOnMap();
+  const focusAlert = selectedId ? alerts.find((a) => a.id === selectedId) ?? null : null;
 
   return (
     <div className="overflow-hidden rounded-xl border border-border shadow-inner" style={{ height }}>
@@ -51,7 +59,8 @@ export function LiveMap({ alerts, vehicles = [], height = '520px', selectedId, o
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution="© OpenStreetMap · العراق"
         />
-        {alerts.length > 1 && <FitBounds alerts={alerts} />}
+        <FitBounds alerts={alerts} enabled={!focusAlert} />
+        <MapFocusController alert={focusAlert} paddingBottomRight={[380, 48]} />
         {alerts.map((a) => {
           const meta = eventMeta(a.event_type);
           const selected = selectedId === a.id;
