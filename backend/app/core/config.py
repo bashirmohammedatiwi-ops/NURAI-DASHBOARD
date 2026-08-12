@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     models_upload_dir: str = "uploads/models"
 
     cloud_predict_url: str = "https://predict-6a7b9e67b578285046a4f04c-dproatj77a-og.a.run.app"
-    cloud_predict_api_key: str = ""
+    cloud_predict_api_key: str = "ul_ee95205eef2428d95e72b5c42acd29dbc84f37a6"
 
     db_pool_size: int = 10
     db_max_overflow: int = 20

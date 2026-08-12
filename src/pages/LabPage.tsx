@@ -4,12 +4,9 @@ import { DetectionCanvas } from '@/components/lab/DetectionCanvas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { useControlContext } from '@/context/ControlContext';
 import { useLabConfig, useLabPredict, useLabPredictBatch } from '@/hooks/useLabPredict';
 import {
-  getUlApiKey,
-  saveUlApiKey,
   classColor,
   downloadCanvas,
   extractVideoFrames,
@@ -22,7 +19,7 @@ import {
 } from '@/lib/predictLab';
 import { cn } from '@/lib/utils';
 import {
-  Activity, ChevronDown, ChevronUp, ClipboardPaste, Code2, Gauge, KeyRound,
+  Activity, ChevronDown, ChevronUp, ClipboardPaste, Code2, Gauge,
   Download, Film, ImageIcon, Loader2, Play, Sparkles, Target, Timer, Upload, Zap,
 } from 'lucide-react';
 
@@ -64,8 +61,6 @@ export default function LabPage() {
   const [frameImageEl, setFrameImageEl] = useState<HTMLImageElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pasteFlash, setPasteFlash] = useState(false);
-  const [apiKey, setApiKey] = useState(() => getUlApiKey());
-  const [showApiKey, setShowApiKey] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
@@ -186,7 +181,7 @@ export default function LabPage() {
     if (!file || !projectId) return;
     setError(null);
     try {
-      const res = await predict.mutateAsync({ file, filename: file.name, params, apiKey });
+      const res = await predict.mutateAsync({ file, filename: file.name, params });
       setResult(res);
       setShowAnnotated(!!res.annotated_image);
       const top = res.detections[0]?.class;
@@ -222,7 +217,6 @@ export default function LabPage() {
       const batch = await predictBatch.mutateAsync({
         frames: frames.map((f, i) => ({ blob: f.blob, filename: `frame_${i}.jpg` })),
         params,
-        apiKey,
       });
 
       const results: FrameResult[] = batch.results.map((res, idx) => ({
@@ -296,9 +290,7 @@ export default function LabPage() {
 
   const isRunning = predict.isPending || predictBatch.isPending || !!frameProgress;
   const apiReady = labConfig?.configured !== false;
-  const serverApiKey = labConfig?.api_key_configured === true;
-  const hasApiKey = serverApiKey || Boolean(apiKey.trim());
-  const showApiKeySection = !serverApiKey;
+  const labReady = apiReady && labConfig?.api_key_configured !== false;
 
   return (
     <div className="page-shell lab-shell" onPaste={onPaste}>
@@ -306,7 +298,7 @@ export default function LabPage() {
         title="مختبر الاختبار"
         subtitle="رفع صورة أو فيديو · تحليل فوري بالنموذج exp-3-turin"
         actions={(
-          <Button onClick={runPredict} disabled={!file || isRunning || !apiReady || !hasApiKey} className="gap-2 shadow-md">
+          <Button onClick={runPredict} disabled={!file || isRunning || !labReady} className="gap-2 shadow-md">
             {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
             {isRunning ? 'جاري التحليل...' : 'تشغيل النموذج'}
           </Button>
@@ -314,46 +306,9 @@ export default function LabPage() {
       />
 
       <div className="page-body">
-        {showApiKeySection && !hasApiKey && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-950">
-            <p className="font-semibold">مفتاح التشغيل مطلوب</p>
-            <p className="mt-1 text-amber-900">أدخل مفتاح التشغيل أدناه لتفعيل التحليل.</p>
-          </div>
-        )}
-
         <div className="grid gap-6 xl:grid-cols-12">
           {/* Left — Upload & Params */}
           <div className="space-y-4 xl:col-span-3">
-            {showApiKeySection && (
-            <Card className={cn(!hasApiKey && 'ring-1 ring-amber-300/60')}>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <KeyRound className="h-4 w-4 text-primary" />
-                  مفتاح التشغيل
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="relative">
-                  <Input
-                    type={showApiKey ? 'text' : 'password'}
-                    value={apiKey}
-                    onChange={(e) => { setApiKey(e.target.value); saveUlApiKey(e.target.value); }}
-                    placeholder="أدخل مفتاح التشغيل"
-                    className="pl-20 font-mono text-xs"
-                    autoComplete="off"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey((v) => !v)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-[10px] font-semibold text-muted-foreground hover:bg-accent"
-                  >
-                    {showApiKey ? 'إخفاء' : 'إظهار'}
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-            )}
-
             <Card className="overflow-hidden ring-1 ring-primary/10">
               <div className="lab-gradient-bar" />
               <CardHeader className="pb-2">

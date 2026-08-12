@@ -117,7 +117,7 @@ async def lab_config(user: User = Depends(get_current_user)):
         "configured": configured,
         "endpoint": endpoint if configured else None,
         "endpoint_label": LAB_ENDPOINT_LABEL,
-        "api_key_required": True,
+        "api_key_required": not bool(env_key),
         "api_key_configured": bool(env_key),
         "defaults": LAB_DEFAULTS,
         "fast_defaults": LAB_FAST_DEFAULTS,
