@@ -22,7 +22,7 @@ import {
 } from '@/lib/predictLab';
 import { cn } from '@/lib/utils';
 import {
-  Activity, CheckCircle2, ChevronDown, ChevronUp, ClipboardPaste, Code2, Gauge, KeyRound,
+  Activity, ChevronDown, ChevronUp, ClipboardPaste, Code2, Gauge, KeyRound,
   Download, Film, ImageIcon, Loader2, Play, Sparkles, Target, Timer, Upload, Zap,
 } from 'lucide-react';
 
@@ -304,28 +304,20 @@ export default function LabPage() {
     <div className="page-shell lab-shell" onPaste={onPaste}>
       <TopBar
         title="مختبر الاختبار"
-        subtitle="رفع صورة أو فيديو · تحليل فوري عبر نموذج YOLO السحابي (exp-3-turin)"
+        subtitle="رفع صورة أو فيديو · تحليل فوري بالنموذج exp-3-turin"
         actions={(
-          <div className="flex items-center gap-2">
-            <Badge className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700">
-              <CheckCircle2 className="h-3 w-3" />
-              {labConfig?.endpoint_label ?? 'Ultralytics API'}
-            </Badge>
-            <Button onClick={runPredict} disabled={!file || isRunning || !apiReady || !hasApiKey} className="gap-2 shadow-md">
-              {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-              {isRunning ? 'جاري التحليل...' : 'تشغيل النموذج'}
-            </Button>
-          </div>
+          <Button onClick={runPredict} disabled={!file || isRunning || !apiReady || !hasApiKey} className="gap-2 shadow-md">
+            {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+            {isRunning ? 'جاري التحليل...' : 'تشغيل النموذج'}
+          </Button>
         )}
       />
 
       <div className="page-body">
         {showApiKeySection && !hasApiKey && (
           <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-950">
-            <p className="font-semibold">مطلوب مفتاح Ultralytics Platform</p>
-            <p className="mt-1 text-amber-900">
-              أدخل مفتاح API بصيغة <code className="rounded bg-white px-1">ul_xxx</code> أدناه.
-            </p>
+            <p className="font-semibold">مفتاح التشغيل مطلوب</p>
+            <p className="mt-1 text-amber-900">أدخل مفتاح التشغيل أدناه لتفعيل التحليل.</p>
           </div>
         )}
 
@@ -337,7 +329,7 @@ export default function LabPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <KeyRound className="h-4 w-4 text-primary" />
-                  مفتاح Ultralytics API
+                  مفتاح التشغيل
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -346,7 +338,7 @@ export default function LabPage() {
                     type={showApiKey ? 'text' : 'password'}
                     value={apiKey}
                     onChange={(e) => { setApiKey(e.target.value); saveUlApiKey(e.target.value); }}
-                    placeholder="ul_xxxxxxxxxxxxxxxx"
+                    placeholder="أدخل مفتاح التشغيل"
                     className="pl-20 font-mono text-xs"
                     autoComplete="off"
                   />
@@ -517,7 +509,7 @@ export default function LabPage() {
                 <div className="flex gap-2">
                   {result?.annotated_image && (
                     <Button size="sm" variant="outline" onClick={() => setShowAnnotated((v) => !v)}>
-                      {showAnnotated ? 'الأصل' : 'API Annotated'}
+                      {showAnnotated ? 'الأصل' : 'نتيجة مُعلّمة'}
                     </Button>
                   )}
                   <Button size="sm" variant="outline" onClick={handleExportImage} disabled={!filtered.length && !previewUrl}>

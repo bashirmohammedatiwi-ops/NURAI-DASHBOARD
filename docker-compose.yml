@@ -35,6 +35,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://nurai:nurai_secret@postgres:5432/nurai
       REDIS_URL: redis://redis:6379/0
+      CLOUD_PREDICT_URL: https://predict-6a7b9e67b578285046a4f04c-dproatj77a-og.a.run.app
     volumes:
       - nurai_uploads:/app/uploads
     depends_on:

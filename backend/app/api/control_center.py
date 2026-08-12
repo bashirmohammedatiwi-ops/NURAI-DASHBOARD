@@ -27,7 +27,7 @@ router = APIRouter(prefix="/control-center", tags=["control-center"])
 
 LAB_DEFAULTS = {"conf": 0.25, "iou": 0.7, "imgsz": 416}
 LAB_FAST_DEFAULTS = {"conf": 0.25, "iou": 0.45, "imgsz": 320}
-LAB_ENDPOINT_LABEL = "exp-3-turin · Ultralytics"
+LAB_ENDPOINT_LABEL = "exp-3-turin"
 LAB_BATCH_CONCURRENCY = 4
 
 
@@ -170,12 +170,9 @@ def _lab_auth_and_url(api_key: str | None) -> tuple[str, str]:
     url = resolve_predict_url(settings.cloud_predict_url)
     resolved_key = resolve_api_key(api_key)
     if not url:
-        raise HTTPException(status_code=503, detail="لم يُضبط CLOUD_PREDICT_URL في backend/.env")
+        raise HTTPException(status_code=503, detail="خدمة التحليل غير متاحة حالياً")
     if not resolved_key:
-        raise HTTPException(
-            status_code=401,
-            detail="مطلوب مفتاح Ultralytics API (ul_xxx) — أدخله في المختبر أو CLOUD_PREDICT_API_KEY في backend/.env",
-        )
+        raise HTTPException(status_code=401, detail="مطلوب مفتاح التشغيل")
     return url, resolved_key
 
 
@@ -214,16 +211,16 @@ async def lab_predict(
             imgsz=imgsz,
         )
     except httpx.TimeoutException as exc:
-        raise HTTPException(status_code=504, detail="انتهت مهلة API — جرّب ملفاً أصغر") from exc
+        raise HTTPException(status_code=504, detail="انتهت مهلة التحليل — جرّب ملفاً أصغر") from exc
     except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail=f"تعذّر الاتصال بـ API: {exc}") from exc
+        raise HTTPException(status_code=502, detail="تعذّر الاتصال بخدمة التحليل") from exc
     except LabPredictError as exc:
         if exc.status_code == 401:
-            raise HTTPException(status_code=401, detail=f"مفتاح API غير صالح: {exc.message}") from exc
-        raise HTTPException(status_code=exc.status_code, detail=f"خطأ من API: {exc.message}") from exc
+            raise HTTPException(status_code=401, detail="مفتاح التشغيل غير صالح") from exc
+        raise HTTPException(status_code=exc.status_code, detail=f"فشل التحليل: {exc.message}") from exc
 
     if not isinstance(payload, dict):
-        raise HTTPException(status_code=502, detail="استجابة API غير صالحة")
+        raise HTTPException(status_code=502, detail="استجابة غير صالحة من خدمة التحليل")
 
     return _build_predict_response(
         payload=payload,
@@ -283,13 +280,13 @@ async def lab_predict_batch(
             concurrency=LAB_BATCH_CONCURRENCY,
         )
     except httpx.TimeoutException as exc:
-        raise HTTPException(status_code=504, detail="انتهت مهلة API — قلّل عدد الإطارات") from exc
+        raise HTTPException(status_code=504, detail="انتهت مهلة التحليل — قلّل عدد الإطارات") from exc
     except httpx.RequestError as exc:
-        raise HTTPException(status_code=502, detail=f"تعذّر الاتصال بـ API: {exc}") from exc
+        raise HTTPException(status_code=502, detail="تعذّر الاتصال بخدمة التحليل") from exc
     except LabPredictError as exc:
         if exc.status_code == 401:
-            raise HTTPException(status_code=401, detail=f"مفتاح API غير صالح: {exc.message}") from exc
-        raise HTTPException(status_code=exc.status_code, detail=f"خطأ من API: {exc.message}") from exc
+            raise HTTPException(status_code=401, detail="مفتاح التشغيل غير صالح") from exc
+        raise HTTPException(status_code=exc.status_code, detail=f"فشل التحليل: {exc.message}") from exc
 
     results = []
     for idx, (payload, latency_ms, inference_ms) in enumerate(payloads):

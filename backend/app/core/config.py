@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     evidence_upload_dir: str = "uploads/evidence"
     models_upload_dir: str = "uploads/models"
 
-    cloud_predict_url: str = ""
+    cloud_predict_url: str = "https://predict-6a7b9e67b578285046a4f04c-dproatj77a-og.a.run.app"
     cloud_predict_api_key: str = ""
 
     db_pool_size: int = 10
