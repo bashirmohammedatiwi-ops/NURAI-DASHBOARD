@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.redis_client import get_redis, get_sync_redis
 from app.models import FleetDevice, RoadEvent, RoadEventType
-from app.schemas import RoadEventCreate
+from app.api.schemas import RoadEventCreate
 from app.services.road.event_helpers import serialize_road_event
 
 router = APIRouter(tags=["road-intelligence"])
