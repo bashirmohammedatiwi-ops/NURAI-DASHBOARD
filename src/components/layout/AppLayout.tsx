@@ -10,6 +10,7 @@ import { LayoutProvider } from '@/context/LayoutContext';
 import { ToastProvider, useToast } from '@/context/ToastContext';
 import { CommandPalette } from '@/components/shared/CommandPalette';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { loadPreferences } from '@/lib/preferences';
 import { initTheme } from '@/lib/theme';
@@ -21,7 +22,7 @@ function LayoutInner() {
   const location = useLocation();
   const hideStatusBar = location.pathname === '/command';
   const { toast } = useToast();
-  const { data: projects = [], isLoading } = useProjects();
+  const { data: projects = [], isLoading, isError, error, refetch } = useProjects();
   const [projectId, setProjectId] = useState(api.getProjectId() ?? '');
   const [mobileNav, setMobileNav] = useState(false);
 
@@ -76,6 +77,25 @@ function LayoutInner() {
         <div className="text-center animate-fade-in">
           <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <p className="text-sm text-muted-foreground">جاري تحميل لوحة التحكم...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="surface-elevated max-w-md p-8 text-center">
+          <p className="text-lg font-bold text-red-700">تعذّر تحميل لوحة التحكم</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {error instanceof Error ? error.message : 'تحقق من اتصال الخادم'}
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button size="sm" onClick={() => refetch()}>إعادة المحاولة</Button>
+            <Button size="sm" variant="outline" onClick={() => { api.clearSession(); navigate('/login'); }}>
+              تسجيل الدخول
+            </Button>
+          </div>
         </div>
       </div>
     );

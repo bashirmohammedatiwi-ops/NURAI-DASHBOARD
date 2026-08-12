@@ -48,11 +48,19 @@ class ApiClient {
       if (!refresh) return false;
       try {
         const url = API_URL ? `${API_URL}/api/v1/auth/refresh` : '/api/v1/auth/refresh';
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: refresh }),
-        });
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 15000);
+        let res: Response;
+        try {
+          res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refresh }),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timer);
+        }
         if (!res.ok) return false;
         const data = await res.json() as { access_token: string; refresh_token: string };
         this.setSession(data.access_token, data.refresh_token);
@@ -66,14 +74,27 @@ class ApiClient {
     return this.refreshPromise;
   }
 
-  private async request<T>(path: string, options: RequestInit = {}, allowRefresh = true): Promise<T> {
+  private async request<T>(path: string, options: RequestInit = {}, allowRefresh = true, timeoutMs = 20000): Promise<T> {
     const token = localStorage.getItem(TOKEN_KEY);
     const headers: Record<string, string> = { ...(options.headers as Record<string, string>) };
     if (token) headers.Authorization = `Bearer ${token}`;
     if (!(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
 
     const url = API_URL ? `${API_URL}${path}` : path;
-    const res = await fetch(url, { ...options, headers });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    let res: Response;
+    try {
+      res = await fetch(url, { ...options, headers, signal: controller.signal });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new Error('انتهت مهلة الاتصال — تحقق أن الخادم يعمل');
+      }
+      throw new Error('تعذّر الاتصال بالخادم');
+    } finally {
+      clearTimeout(timer);
+    }
 
     if (res.status === 401 && allowRefresh) {
       const ok = await this.refreshSession();

@@ -10,6 +10,7 @@ from starlette.responses import JSONResponse
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.database import engine
+from app.core.db_migrate import ensure_road_event_enum
 from app.services.lab.predict_client import close_predict_client
 from sqlalchemy import text
 
@@ -20,6 +21,10 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     for sub in ("uploads/evidence", "uploads/models", "demo_images"):
         Path(sub).mkdir(parents=True, exist_ok=True)
+    try:
+        await ensure_road_event_enum()
+    except Exception:
+        pass
     yield
     await close_predict_client()
 

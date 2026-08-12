@@ -1,11 +1,13 @@
 import asyncio
 import sys
 import traceback
+import uuid
 
 from sqlalchemy import select, text
 
 from app.core.config import get_settings
 from app.core.database import Base, async_session, engine
+from app.core.db_migrate import ensure_road_event_enum
 from app.core.security import hash_password
 
 # Register all ORM tables before create_all
@@ -40,9 +42,13 @@ async def init_db() -> None:
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-            await conn.execute(text("ALTER TYPE roadeventtype ADD VALUE IF NOT EXISTS 'manhole'"))
     except Exception as exc:
         print(f"create_all warning: {exc}", file=sys.stderr)
+
+    try:
+        await ensure_road_event_enum()
+    except Exception as exc:
+        print(f"enum migrate warning: {exc}", file=sys.stderr)
 
     project_id_for_seed: uuid.UUID | None = None
 

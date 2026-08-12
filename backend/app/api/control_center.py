@@ -33,15 +33,6 @@ LAB_BATCH_CONCURRENCY = 4
 
 @router.get("/{project_id}/overview")
 async def control_center_overview(project_id: UUID, db: AsyncSession = Depends(get_db)):
-    event_count = await db.execute(
-        select(func.count(RoadEvent.id)).where(RoadEvent.project_id == project_id)
-    )
-    if (event_count.scalar() or 0) == 0:
-        from app.services.demo.iraq_demo_seed import seed_iraq_demo
-
-        await seed_iraq_demo(db, project_id, force=False)
-        await db.flush()
-
     active_events = await db.execute(
         select(RoadEvent).where(RoadEvent.project_id == project_id, RoadEvent.is_active == True).limit(500)
     )

@@ -7,6 +7,9 @@ export function useProjects() {
   return useQuery({
     queryKey: ['projects'],
     queryFn: () => api.get<Project[]>('/api/v1/projects'),
+    retry: 2,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
   });
 }
 
