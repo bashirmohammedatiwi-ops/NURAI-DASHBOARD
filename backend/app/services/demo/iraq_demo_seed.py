@@ -17,8 +17,8 @@ from app.models import FleetDevice, Project, RoadEvent, RoadEventType
 from app.models.fleet import DeviceTelemetry
 from app.services.road.event_helpers import default_recipient
 
-DEMO_MARKER = "rasid_iraq_demo_v7"
-LEGACY_DEMO_MARKERS = ("rasid_iraq_demo_v1", "rasid_iraq_demo_v2", "rasid_iraq_demo_v3", "rasid_iraq_demo_v4", "rasid_iraq_demo_v5", "rasid_iraq_demo_v6")
+DEMO_MARKER = "rasid_iraq_demo_v8"
+LEGACY_DEMO_MARKERS = ("rasid_iraq_demo_v1", "rasid_iraq_demo_v2", "rasid_iraq_demo_v3", "rasid_iraq_demo_v4", "rasid_iraq_demo_v5", "rasid_iraq_demo_v6", "rasid_iraq_demo_v7")
 DEMO_NEIGHBORHOOD = "zayouna"
 DEMO_NEIGHBORHOOD_AR = "الزيونة"
 DEMO_BLOCK = "712"
@@ -56,6 +56,7 @@ STREET_ON_ROAD_POINTS: dict[str, list[tuple[float, float]]] = {
     "712-7": [(33.3170897, 44.4480132), (33.3194050, 44.4505766), (33.3216746, 44.4530894), (33.3245234, 44.4562436)],
     "712-22": [(33.3245234, 44.4562436), (33.3247657, 44.4559127), (33.3248869, 44.4557472), (33.3250081, 44.4555817)],
     "712-23": [(33.3234786, 44.4513770), (33.3247649, 44.4528357), (33.3256831, 44.4538772), (33.3266171, 44.4549363)],
+    "714-20": [(33.3251805, 44.4491742), (33.3262306, 44.4478347), (33.3272950, 44.4464768)],
 }
 
 # Al-Ameen (الأمين الثانية) — OSM-sampled road points, eastern Baghdad
@@ -65,9 +66,8 @@ AMEEN_ON_ROAD_POINTS: dict[str, list[tuple[float, float]]] = {
     "park": [(33.3131894, 44.5122919)],
 }
 
-# 18 municipality alerts across 8 Zayouna block-712 streets (OSM coordinates).
-# 712-7, 712-23 → 4 each; 712-22 → 2; 712-6/8 → 1 each; 712-12/20/18 → 2 each.
-# Breakdown: 10 speed bump · 3 pothole · 5 manhole.
+# 21 municipality alerts — block 712 (Zayouna) + 714-20 (3 alerts).
+# Breakdown: 11 speed bump · 4 pothole · 6 manhole.
 STREET_SCENARIOS: list[dict] = [
     {
         "street": "712-6",
@@ -135,6 +135,17 @@ STREET_SCENARIOS: list[dict] = [
             ("manhole", "بالوعة — قرب مطب", "medium", 0.87, 3),
         ],
     },
+    {
+        "street": "714-20",
+        "street_ar": "714-20",
+        "block": "714",
+        "block_ar": "محلة 714",
+        "events": [
+            ("speed_bump", "مطب — على الشارع", "medium", 0.87, 0),
+            ("pothole", "حفرة — وسط الشارع", "high", 0.90, 1),
+            ("manhole", "بالوعة — على الشارع", "medium", 0.88, 2),
+        ],
+    },
 ]
 
 _EVENT_TYPE = {
@@ -157,6 +168,7 @@ def _build_municipality_alerts() -> list[dict]:
     for scenario in STREET_SCENARIOS:
         street = scenario["street"]
         street_ar = scenario["street_ar"]
+        block_ar = scenario.get("block_ar", DEMO_BLOCK_AR)
         road_points = STREET_ON_ROAD_POINTS.get(street, [])
         for event_key, detail, severity, conf, point_idx in scenario["events"]:
             idx += 1
@@ -169,12 +181,12 @@ def _build_municipality_alerts() -> list[dict]:
                 raise ValueError(f"Missing on-road points for street {street}")
             kind_ar = _KIND_AR[event_key]
             if street_ar.startswith("شارع"):
-                title = f"{kind_ar} — {DEMO_BLOCK_AR} · {street_ar}"
+                title = f"{kind_ar} — {block_ar} · {street_ar}"
             else:
-                title = f"{kind_ar} — {DEMO_BLOCK_AR} {street_ar}"
+                title = f"{kind_ar} — {block_ar} {street_ar}"
             if detail and "—" in detail:
-                title = f"{kind_ar} — {DEMO_BLOCK_AR} · {detail.split('—', 1)[-1].strip()}"
-            alerts.append({
+                title = f"{kind_ar} — {block_ar} · {detail.split('—', 1)[-1].strip()}"
+            alert: dict = {
                 "event_type": event_type,
                 "lat": lat,
                 "lng": lng,
@@ -187,7 +199,11 @@ def _build_municipality_alerts() -> list[dict]:
                 "street_ar": street_ar,
                 "reference": f"MUN-712-{idx:03d}",
                 "detection_class": "manhole" if event_key == "manhole" else None,
-            })
+            }
+            if scenario.get("block"):
+                alert["block"] = scenario["block"]
+                alert["block_ar"] = block_ar
+            alerts.append(alert)
     return alerts
 
 
@@ -289,8 +305,8 @@ def _demo_event_meta(spec: dict, device: FleetDevice | None) -> dict:
     else:
         meta["neighborhood"] = DEMO_NEIGHBORHOOD
         meta["neighborhood_ar"] = DEMO_NEIGHBORHOOD_AR
-        meta["block"] = DEMO_BLOCK
-        meta["block_ar"] = DEMO_BLOCK_AR
+        meta["block"] = spec.get("block", DEMO_BLOCK)
+        meta["block_ar"] = spec.get("block_ar", DEMO_BLOCK_AR)
     if spec["event_type"] == RoadEventType.TRAFFIC_VIOLATION:
         meta["speed_kmh"] = spec["speed_kmh"]
         meta["speed_limit_kmh"] = spec["speed_limit_kmh"]
@@ -544,7 +560,7 @@ async def seed_iraq_demo(db: AsyncSession, project_id: uuid.UUID, *, force: bool
             "source_vehicle": DEMO_SOURCE_VEHICLE_ID,
             "images_attached": attach.get("attached", 0),
             "images_source": attach.get("source"),
-            "municipality_breakdown": {"speed_bump": 10, "pothole": 3, "manhole": 5},
+            "municipality_breakdown": {"speed_bump": 11, "pothole": 4, "manhole": 6},
         }
 
     cleared = 0
