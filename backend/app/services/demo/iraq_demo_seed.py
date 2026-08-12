@@ -6,11 +6,8 @@ Includes default speed violations in Al-Ameen district (40 km/h limit).
 
 from __future__ import annotations
 
-import random
 import secrets
 import uuid
-import math
-import zlib
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, or_, select
@@ -20,8 +17,8 @@ from app.models import FleetDevice, Project, RoadEvent, RoadEventType
 from app.models.fleet import DeviceTelemetry
 from app.services.road.event_helpers import default_recipient
 
-DEMO_MARKER = "rasid_iraq_demo_v6"
-LEGACY_DEMO_MARKERS = ("rasid_iraq_demo_v1", "rasid_iraq_demo_v2", "rasid_iraq_demo_v3", "rasid_iraq_demo_v4", "rasid_iraq_demo_v5")
+DEMO_MARKER = "rasid_iraq_demo_v7"
+LEGACY_DEMO_MARKERS = ("rasid_iraq_demo_v1", "rasid_iraq_demo_v2", "rasid_iraq_demo_v3", "rasid_iraq_demo_v4", "rasid_iraq_demo_v5", "rasid_iraq_demo_v6")
 DEMO_NEIGHBORHOOD = "zayouna"
 DEMO_NEIGHBORHOOD_AR = "الزيونة"
 DEMO_BLOCK = "712"
@@ -38,7 +35,7 @@ AMEEN_SPEED_LIMIT_KMH = 40
 # Demo fleet — all offline; Baghdad units across city districts
 FLEET_VEHICLES: list[dict] = [
     {"device_id": "rasid-bgd-01", "vehicle_id": "RASID-BGD-01", "gov": "baghdad", "lat": 33.3229822, "lng": 44.4520278, "online": False, "neighborhood_ar": "الزيونة"},
-    {"device_id": "rasid-bgd-02", "vehicle_id": "RASID-BGD-02", "gov": "baghdad", "lat": 33.3208066, "lng": 44.4521284, "online": False, "neighborhood_ar": "الزيونة"},
+    {"device_id": "rasid-bgd-02", "vehicle_id": "RASID-BGD-02", "gov": "baghdad", "lat": 33.3202289, "lng": 44.4514888, "online": False, "neighborhood_ar": "الزيونة"},
     {"device_id": "rasid-bgd-03", "vehicle_id": "RASID-BGD-03", "gov": "baghdad", "lat": 33.3176879, "lng": 44.4518373, "online": False, "neighborhood_ar": "الزيونة"},
     {"device_id": "rasid-bgd-04", "vehicle_id": "RASID-BGD-04", "gov": "baghdad", "lat": 33.3098500, "lng": 44.5185000, "online": False, "neighborhood_ar": "حي الأمين"},
     {"device_id": "rasid-bgd-05", "vehicle_id": "RASID-BGD-05", "gov": "baghdad", "lat": 33.3120000, "lng": 44.3920000, "online": False, "neighborhood_ar": "الكرادة"},
@@ -49,8 +46,8 @@ FLEET_VEHICLES: list[dict] = [
     {"device_id": "rasid-bgd-10", "vehicle_id": "RASID-BGD-10", "gov": "baghdad", "lat": 33.2430000, "lng": 44.3940000, "online": False, "neighborhood_ar": "الدور"},
 ]
 
-# OSM centerline polylines — alerts scattered with realistic GPS jitter (see _scatter_on_street).
-STREET_POLYLINES: dict[str, list[tuple[float, float]]] = {
+# Points sampled along OSM highway centerlines — on the road, not block centroids
+STREET_ON_ROAD_POINTS: dict[str, list[tuple[float, float]]] = {
     "712-6": [(33.3209604, 44.4472993), (33.3204061, 44.4480162), (33.3198835, 44.4486922), (33.3193685, 44.4493582)],
     "712-8": [(33.3219290, 44.4483501), (33.3213578, 44.4490670), (33.3208314, 44.4497259), (33.3203018, 44.4503880)],
     "712-12": [(33.3232290, 44.4497840), (33.3227326, 44.4504272), (33.3221570, 44.4511718), (33.3216298, 44.4518535)],
@@ -61,9 +58,6 @@ STREET_POLYLINES: dict[str, list[tuple[float, float]]] = {
     "712-23": [(33.3234786, 44.4513770), (33.3247649, 44.4528357), (33.3256831, 44.4538772), (33.3266171, 44.4549363)],
 }
 
-# Back-compat alias used by helpers below.
-STREET_ON_ROAD_POINTS = STREET_POLYLINES
-
 # Al-Ameen (الأمين الثانية) — OSM-sampled road points, eastern Baghdad
 AMEEN_ON_ROAD_POINTS: dict[str, list[tuple[float, float]]] = {
     "nuwwab": [(33.3087489, 44.5170126), (33.3098500, 44.5185000)],
@@ -71,76 +65,74 @@ AMEEN_ON_ROAD_POINTS: dict[str, list[tuple[float, float]]] = {
     "park": [(33.3131894, 44.5122919)],
 }
 
-# 20 municipality alerts across 8 Zayouna block-712 streets (OSM coordinates).
-# 712-7, 712-22, 712-23 → 4 alerts each; 712-6/8 → 1 each; 712-12/20/18 → 2 each.
-# Breakdown: 11 speed bump · 3 pothole · 6 manhole.
+# 18 municipality alerts across 8 Zayouna block-712 streets (OSM coordinates).
+# 712-7, 712-23 → 4 each; 712-22 → 2; 712-6/8 → 1 each; 712-12/20/18 → 2 each.
+# Breakdown: 10 speed bump · 3 pothole · 5 manhole.
 STREET_SCENARIOS: list[dict] = [
     {
         "street": "712-6",
         "street_ar": "712-6",
         "events": [
-            ("speed_bump", "مطب — وسط الشارع", "medium", 0.88),
+            ("speed_bump", "مطب — بداية الشارع", "medium", 0.88, 0),
         ],
     },
     {
         "street": "712-8",
         "street_ar": "712-8",
         "events": [
-            ("pothole", "حفرة — منتصف الشارع", "high", 0.91),
+            ("pothole", "حفرة — على الشارع", "high", 0.91, 0),
         ],
     },
     {
         "street": "712-12",
         "street_ar": "712-12",
         "events": [
-            ("speed_bump", "مطب — وسط الشارع", "medium", 0.86),
-            ("manhole", "بالوعة — على الشارع", "medium", 0.88),
+            ("speed_bump", "مطب — قرب التقاطع", "medium", 0.86, 0),
+            ("manhole", "بالوعة — على الشارع", "medium", 0.88, 1),
         ],
     },
     {
         "street": "712-20",
         "street_ar": "712-20",
         "events": [
-            ("pothole", "حفرة — وسط الشارع", "high", 0.92),
-            ("speed_bump", "مطب — منتصف الشارع", "medium", 0.85),
+            ("pothole", "حفرة — قرب تقاطع", "high", 0.92, 0),
+            ("speed_bump", "مطب — أمام عمارة", "medium", 0.85, 1),
         ],
     },
     {
         "street": "712-18",
         "street_ar": "712-18",
         "events": [
-            ("manhole", "بالوعة — وسط الشارع", "medium", 0.88),
-            ("speed_bump", "مطب — على الشارع", "medium", 0.86),
+            ("manhole", "بالوعة — على الشارع", "medium", 0.88, 0),
+            ("speed_bump", "مطب — مجاور للبالوعة", "medium", 0.86, 1),
         ],
     },
     {
         "street": "712-7",
         "street_ar": "712-7",
         "events": [
-            ("speed_bump", "مطب — وسط الشارع", "medium", 0.84),
-            ("speed_bump", "مطب — أمام محل", "medium", 0.83),
-            ("pothole", "حفرة — منتصف الشارع", "high", 0.90),
-            ("manhole", "بالوعة — على الشارع", "medium", 0.89),
+            ("speed_bump", "مطب — بداية الشارع", "medium", 0.84, 0),
+            ("speed_bump", "مطب — أمام محل", "medium", 0.83, 1),
+            ("pothole", "حفرة — وسط الشارع", "high", 0.90, 2),
+            ("manhole", "بالوعة — منتصف الشارع", "medium", 0.89, 3),
         ],
     },
     {
         "street": "712-22",
         "street_ar": "712-22",
         "events": [
-            ("speed_bump", "مطب — وسط الشارع", "medium", 0.85),
-            ("speed_bump", "مطب — على الشارع", "low", 0.82),
-            ("speed_bump", "مطب — منتصف الشارع", "medium", 0.84),
-            ("manhole", "بالوعة — على الشارع", "medium", 0.88),
+            ("speed_bump", "مطب — على الشارع", "medium", 0.85, 0),
+            ("speed_bump", "مطب — ثانٍ", "low", 0.82, 1),
         ],
     },
     {
         "street": "712-23",
         "street_ar": "712-23",
         "events": [
-            ("speed_bump", "مطب — وسط الشارع", "medium", 0.87),
-            ("speed_bump", "مطب — منتصف الشارع", "medium", 0.86),
-            ("manhole", "بالوعة — على الشارع", "medium", 0.88),
-            ("manhole", "بالوعة — قرب مطب", "medium", 0.87),
+            ("speed_bump", "مطب — بداية الشارع", "medium", 0.87, 0),
+            ("speed_bump", "مطب — أمام جامع", "medium", 0.86, 1),
+            ("manhole", "بالوعة — على الشارع", "medium", 0.88, 2),
+            ("manhole", "بالوعة — قرب مطب", "medium", 0.87, 3),
         ],
     },
 ]
@@ -158,148 +150,6 @@ _KIND_AR = {
     "manhole": "بالوعة",
 }
 
-# Realistic scatter — random along the road with GPS-like jitter (stable seeded RNG).
-_DEMO_GEO_SEED = 712_240
-_STREET_MARGIN_RANGE = (0.11, 0.26)
-_MIN_ALERT_SEP_M = 10.0
-_LATERAL_JITTER_M = (2.0, 16.0)
-_FORWARD_JITTER_M = (-11.0, 11.0)
-
-
-def _street_seed(street: str) -> int:
-    return zlib.adler32(street.encode("utf-8")) ^ _DEMO_GEO_SEED
-
-
-def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    r = 6_371_000.0
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    dlat = math.radians(lat2 - lat1)
-    dlng = math.radians(lng2 - lng1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlng / 2) ** 2
-    return 2 * r * math.asin(min(1.0, math.sqrt(a)))
-
-
-def _bearing_deg(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    dlng = math.radians(lng2 - lng1)
-    y = math.sin(dlng) * math.cos(p2)
-    x = math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dlng)
-    return math.degrees(math.atan2(y, x))
-
-
-def _offset_meters(lat: float, lng: float, bearing_deg: float, north_m: float, east_m: float) -> tuple[float, float]:
-    br = math.radians(bearing_deg)
-    total_n = north_m * math.cos(br) - east_m * math.sin(br)
-    total_e = north_m * math.sin(br) + east_m * math.cos(br)
-    dlat = total_n / 111_320.0
-    dlng = total_e / (111_320.0 * max(math.cos(math.radians(lat)), 0.01))
-    return lat + dlat, lng + dlng
-
-
-def _polyline_metrics(polyline: list[tuple[float, float]]) -> tuple[list[float], float]:
-    seg_lens = [
-        math.hypot(polyline[i + 1][0] - polyline[i][0], polyline[i + 1][1] - polyline[i][1])
-        for i in range(len(polyline) - 1)
-    ]
-    return seg_lens, sum(seg_lens)
-
-
-def _point_on_polyline(
-    polyline: list[tuple[float, float]],
-    seg_lens: list[float],
-    distance: float,
-) -> tuple[float, float, float]:
-    if len(polyline) == 1:
-        return polyline[0][0], polyline[0][1], 0.0
-    walked = 0.0
-    for i, seg_len in enumerate(seg_lens):
-        if walked + seg_len >= distance or i == len(seg_lens) - 1:
-            frac = (distance - walked) / seg_len if seg_len else 0.5
-            frac = max(0.0, min(1.0, frac))
-            lat_a, lng_a = polyline[i]
-            lat_b, lng_b = polyline[i + 1]
-            lat = lat_a + (lat_b - lat_a) * frac
-            lng = lng_a + (lng_b - lng_a) * frac
-            return lat, lng, _bearing_deg(lat_a, lng_a, lat_b, lng_b)
-        walked += seg_len
-    lat_a, lng_a = polyline[-2]
-    lat_b, lng_b = polyline[-1]
-    return lat_b, lng_b, _bearing_deg(lat_a, lng_a, lat_b, lng_b)
-
-
-def _jitter_on_road(lat: float, lng: float, bearing: float, rng: random.Random) -> tuple[float, float]:
-    lateral = rng.uniform(*_LATERAL_JITTER_M) * rng.choice([-1.0, 1.0])
-    forward = rng.uniform(*_FORWARD_JITTER_M)
-    return _offset_meters(lat, lng, bearing, forward, lateral)
-
-
-def _scatter_on_street(polyline: list[tuple[float, float]], count: int, *, seed: int) -> list[tuple[float, float]]:
-    """Place alerts at irregular intervals on the street centerline with GPS-like noise."""
-    if count <= 0:
-        return []
-    rng = random.Random(seed)
-    if len(polyline) == 1:
-        lat, lng = polyline[0]
-        b = rng.uniform(0.0, 360.0)
-        return [(round(lat, 7), round(lng, 7))] if count == 1 else [
-            (round(x, 7), round(y, 7))
-            for x, y in (_jitter_on_road(lat, lng, b, rng) for _ in range(count))
-        ]
-
-    seg_lens, total = _polyline_metrics(polyline)
-    if total <= 0:
-        return [polyline[0]] * count
-
-    margin = rng.uniform(*_STREET_MARGIN_RANGE)
-    lo = margin * total
-    hi = (1.0 - margin) * total
-    span_m = _haversine_m(*_point_on_polyline(polyline, seg_lens, lo)[:2], *_point_on_polyline(polyline, seg_lens, hi)[:2])
-    min_sep = min(_MIN_ALERT_SEP_M, max(5.0, span_m / max(count + 0.5, 1.5) * 0.55))
-
-    placed: list[tuple[float, float]] = []
-    attempts = 0
-    max_attempts = max(60, count * 45)
-    while len(placed) < count and attempts < max_attempts:
-        attempts += 1
-        dist = rng.uniform(lo, hi)
-        lat, lng, bearing = _point_on_polyline(polyline, seg_lens, dist)
-        lat, lng = _jitter_on_road(lat, lng, bearing, rng)
-        if any(_haversine_m(lat, lng, a, b) < min_sep for a, b in placed):
-            continue
-        placed.append((round(lat, 7), round(lng, 7)))
-
-    # Relax separation if a short street could not fit every alert.
-    while len(placed) < count and attempts < max_attempts * 2:
-        attempts += 1
-        dist = rng.uniform(lo, hi)
-        lat, lng, bearing = _point_on_polyline(polyline, seg_lens, dist)
-        lat, lng = _jitter_on_road(lat, lng, bearing, rng)
-        if any(_haversine_m(lat, lng, a, b) < min_sep * 0.45 for a, b in placed):
-            continue
-        placed.append((round(lat, 7), round(lng, 7)))
-
-    while len(placed) < count:
-        dist = rng.uniform(lo, hi)
-        lat, lng, bearing = _point_on_polyline(polyline, seg_lens, dist)
-        lat, lng = _jitter_on_road(lat, lng, bearing, rng)
-        placed.append((round(lat, 7), round(lng, 7)))
-
-    return placed
-
-
-def _vary_confidence(base: float, alert_idx: int) -> float:
-    rng = random.Random(_DEMO_GEO_SEED + alert_idx * 31)
-    return round(min(0.97, max(0.74, base + rng.uniform(-0.06, 0.05))), 2)
-
-
-def _vary_hours_ago(alert_idx: int) -> int:
-    rng = random.Random(_DEMO_GEO_SEED + alert_idx * 53)
-    if rng.random() < 0.55:
-        return rng.randint(1, 16)
-    if rng.random() < 0.35:
-        return rng.randint(16, 48)
-    return rng.randint(48, 96)
-
 
 def _build_municipality_alerts() -> list[dict]:
     alerts: list[dict] = []
@@ -307,17 +157,16 @@ def _build_municipality_alerts() -> list[dict]:
     for scenario in STREET_SCENARIOS:
         street = scenario["street"]
         street_ar = scenario["street_ar"]
-        polyline = STREET_POLYLINES.get(street, [])
-        events = scenario["events"]
-        coords = _scatter_on_street(polyline, len(events), seed=_street_seed(street))
-        for slot, event in enumerate(events):
-            if len(event) == 5:
-                event_key, detail, severity, conf, _legacy_idx = event
-            else:
-                event_key, detail, severity, conf = event
+        road_points = STREET_ON_ROAD_POINTS.get(street, [])
+        for event_key, detail, severity, conf, point_idx in scenario["events"]:
             idx += 1
             event_type = _EVENT_TYPE[event_key]
-            lat, lng = coords[slot]
+            if point_idx < len(road_points):
+                lat, lng = road_points[point_idx]
+            elif road_points:
+                lat, lng = road_points[0]
+            else:
+                raise ValueError(f"Missing on-road points for street {street}")
             kind_ar = _KIND_AR[event_key]
             if street_ar.startswith("شارع"):
                 title = f"{kind_ar} — {DEMO_BLOCK_AR} · {street_ar}"
@@ -331,9 +180,9 @@ def _build_municipality_alerts() -> list[dict]:
                 "lng": lng,
                 "title": title,
                 "severity": severity,
-                "confidence": _vary_confidence(conf, idx),
+                "confidence": conf,
                 "device_key": DEMO_SOURCE_DEVICE,
-                "hours_ago": _vary_hours_ago(idx),
+                "hours_ago": max(1, 24 - idx),
                 "street": street,
                 "street_ar": street_ar,
                 "reference": f"MUN-712-{idx:03d}",
@@ -373,7 +222,8 @@ def _build_speed_violation_alerts() -> list[dict]:
         road_points = AMEEN_ON_ROAD_POINTS.get(spec["street"], [])
         if not road_points:
             raise ValueError(f"Missing on-road points for Al-Ameen street {spec['street']}")
-        lat, lng = _scatter_on_street(road_points, 1, seed=_street_seed(f"ameen:{spec['street']}"))[0]
+        idx = spec["point_idx"]
+        lat, lng = road_points[idx if idx < len(road_points) else 0]
         speed = spec["speed_kmh"]
         limit = AMEEN_SPEED_LIMIT_KMH
         excess = speed - limit
@@ -694,7 +544,7 @@ async def seed_iraq_demo(db: AsyncSession, project_id: uuid.UUID, *, force: bool
             "source_vehicle": DEMO_SOURCE_VEHICLE_ID,
             "images_attached": attach.get("attached", 0),
             "images_source": attach.get("source"),
-            "municipality_breakdown": {"speed_bump": 11, "pothole": 3, "manhole": 6},
+            "municipality_breakdown": {"speed_bump": 10, "pothole": 3, "manhole": 5},
         }
 
     cleared = 0

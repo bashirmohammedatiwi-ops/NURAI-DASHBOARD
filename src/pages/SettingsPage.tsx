@@ -83,10 +83,10 @@ export default function SettingsPage() {
           <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5 text-primary" />بيانات العرض</CardTitle></CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div className="rounded-lg border border-border bg-muted/30 p-4 text-muted-foreground">
-              <p><strong className="text-foreground">22 تنبيه</strong>: 20 في محلة 712 — الزيونة + <strong className="text-foreground">2 مخالفة سرعة</strong> في حي الأمين (حد 40 كم/س).</p>
+              <p><strong className="text-foreground">20 تنبيه</strong>: 18 في محلة 712 — الزيونة + <strong className="text-foreground">2 مخالفة سرعة</strong> في حي الأمين (حد 40 كم/س).</p>
               <p className="mt-2"><strong className="text-foreground">10 مركبات</strong> — كلها في بغداد (RASID-BGD-01 … 10).</p>
               <p className="mt-2">كل التنبيهات من مركبة <code className="rounded bg-muted px-1">RASID-BGD-02</code>.</p>
-              <p className="mt-2">للصور: <code className="rounded bg-muted px-1">MUN-712-001.jpg</code> … <code className="rounded bg-muted px-1">020</code> و<code className="rounded bg-muted px-1">TRF-AME-001.jpg</code> … <code className="rounded bg-muted px-1">002</code></p>
+              <p className="mt-2">للصور: <code className="rounded bg-muted px-1">MUN-712-001.jpg</code> … <code className="rounded bg-muted px-1">018</code> و<code className="rounded bg-muted px-1">TRF-AME-001.jpg</code> … <code className="rounded bg-muted px-1">002</code></p>
             </div>
 
             {overview && (
