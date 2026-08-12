@@ -17,7 +17,7 @@ from app.models import FleetDevice, Project, RoadEvent, RoadEventType
 from app.models.fleet import DeviceTelemetry
 from app.services.road.event_helpers import default_recipient
 
-DEMO_MARKER = "rasid_iraq_demo_v9"
+DEMO_MARKER = "rasid_iraq_demo_v10"
 LEGACY_DEMO_MARKERS = (
     "rasid_iraq_demo_v1",
     "rasid_iraq_demo_v2",
@@ -27,6 +27,7 @@ LEGACY_DEMO_MARKERS = (
     "rasid_iraq_demo_v6",
     "rasid_iraq_demo_v7",
     "rasid_iraq_demo_v8",
+    "rasid_iraq_demo_v9",
 )
 DEMO_NEIGHBORHOOD = "zayouna"
 DEMO_NEIGHBORHOOD_AR = "الزيونة"
@@ -55,17 +56,17 @@ FLEET_VEHICLES: list[dict] = [
     {"device_id": "rasid-bgd-10", "vehicle_id": "RASID-BGD-10", "gov": "baghdad", "lat": 33.2430000, "lng": 44.3940000, "online": False, "neighborhood_ar": "الدور"},
 ]
 
-# OSM centerline samples — mid-street only (avoid intersections + شارع الربيعي)
+# OSM highway centerlines — sampled along full way geometry (meter-weighted), mid-street
 STREET_ON_ROAD_POINTS: dict[str, list[tuple[float, float]]] = {
-    "712-6": [(33.3202600, 44.4488812)],
-    "712-8": [(33.3210998, 44.4500489)],
-    "712-12": [(33.3226057, 44.4513360), (33.3221418, 44.4518732)],
-    "712-20": [(33.3255030, 44.4547781), (33.3250895, 44.4552956)],
-    "712-18": [(33.3238703, 44.4533249), (33.3241634, 44.4529510)],
-    "712-7": [(33.3199145, 44.4536535), (33.3209553, 44.4548058), (33.3218473, 44.4564348), (33.3228137, 44.4575048)],
-    "712-22": [(33.3247464, 44.4556082), (33.3248675, 44.4556081)],
-    "712-23": [(33.3247654, 44.4538778), (33.3252048, 44.4543761), (33.3256441, 44.4548745), (33.3260521, 44.4553548)],
-    "714-20": [(33.3251805, 44.4491742), (33.3262306, 44.4478347), (33.3272950, 44.4464768)],
+    "712-6": [(33.3200441, 44.4484845)],
+    "712-8": [(33.3208017, 44.4497631)],
+    "712-12": [(33.3224339, 44.4508137), (33.3218266, 44.4515990)],
+    "712-20": [(33.3255189, 44.4540892), (33.3251054, 44.4546229)],
+    "712-18": [(33.3240837, 44.4537047), (33.3245458, 44.4531153)],
+    "712-7": [(33.3202916, 44.4515582), (33.3216101, 44.4530180), (33.3228343, 44.4543735), (33.3240586, 44.4557290)],
+    "712-22": [(33.3247415, 44.4559457), (33.3248530, 44.4557935)],
+    "712-23": [(33.3256605, 44.4538516), (33.3260573, 44.4543015), (33.3264144, 44.4547064), (33.3267318, 44.4550664)],
+    "714-20": [(33.3257616, 44.4484330), (33.3265687, 44.4474008), (33.3273304, 44.4464316)],
 }
 
 # Al-Ameen (الأمين الثانية) — OSM-sampled road points, eastern Baghdad
