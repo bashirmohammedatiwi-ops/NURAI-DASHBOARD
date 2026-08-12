@@ -1,10 +1,15 @@
 import asyncio
+import sys
+import traceback
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.core.config import get_settings
 from app.core.database import Base, async_session, engine
 from app.core.security import hash_password
+
+# Register all ORM tables before create_all
+import app.models  # noqa: F401
 from app.models import Organization, Project, User, UserRole
 from app.services.demo.iraq_demo_seed import seed_iraq_demo_for_default_project
 
@@ -15,8 +20,22 @@ ROAD_PROJECT = {
 }
 
 
+async def wait_for_db(max_attempts: int = 30) -> None:
+    for attempt in range(1, max_attempts + 1):
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            return
+        except Exception as exc:
+            if attempt == max_attempts:
+                raise exc
+            print(f"Waiting for postgres ({attempt}/{max_attempts})...")
+            await asyncio.sleep(2)
+
+
 async def init_db() -> None:
     settings = get_settings()
+    await wait_for_db()
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -60,11 +79,15 @@ async def init_db() -> None:
 
         await db.commit()
 
-    async with async_session() as db:
-        seed_result = await seed_iraq_demo_for_default_project(db)
-        if seed_result:
-            await db.commit()
-            print(f"Demo seed: {seed_result}")
+    try:
+        async with async_session() as db:
+            seed_result = await seed_iraq_demo_for_default_project(db)
+            if seed_result:
+                await db.commit()
+                print(f"Demo seed: {seed_result}")
+    except Exception as exc:
+        print(f"Demo seed skipped: {exc}", file=sys.stderr)
+        traceback.print_exc()
 
 
 if __name__ == "__main__":

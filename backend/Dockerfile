@@ -14,7 +14,7 @@ ENV APP_ENV=production
 
 EXPOSE 9000
 
-HEALTHCHECK --interval=30s --timeout=8s --retries=5 \
+HEALTHCHECK --interval=10s --timeout=8s --retries=12 --start-period=90s \
   CMD curl -f http://127.0.0.1:9000/health/ready || exit 1
 
 CMD ["sh", "-c", "python scripts/init_db.py && uvicorn app.main:app --host 0.0.0.0 --port 9000"]
