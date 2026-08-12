@@ -17,8 +17,8 @@ from app.models import FleetDevice, Project, RoadEvent, RoadEventType
 from app.models.fleet import DeviceTelemetry
 from app.services.road.event_helpers import default_recipient
 
-DEMO_MARKER = "rasid_iraq_demo_v3"
-LEGACY_DEMO_MARKERS = ("rasid_iraq_demo_v1", "rasid_iraq_demo_v2")
+DEMO_MARKER = "rasid_iraq_demo_v4"
+LEGACY_DEMO_MARKERS = ("rasid_iraq_demo_v1", "rasid_iraq_demo_v2", "rasid_iraq_demo_v3")
 DEMO_NEIGHBORHOOD = "zayouna"
 DEMO_NEIGHBORHOOD_AR = "الزيونة"
 DEMO_BLOCK = "712"
@@ -48,20 +48,14 @@ FLEET_VEHICLES: list[dict] = [
 
 # Points sampled along OSM highway centerlines — on the road, not block centroids
 STREET_ON_ROAD_POINTS: dict[str, list[tuple[float, float]]] = {
-    "712-7": [(33.3202289, 44.4514888), (33.3233680, 44.4549643)],
-    "712-15": [(33.3176879, 44.4518373), (33.3184457, 44.4526802)],
-    "712-22": [(33.3247657, 44.4559127)],
-    "712-35": [(33.3238988, 44.4566522), (33.3234588, 44.4571991)],
-    "712-28": [(33.3275079, 44.4557935), (33.3269765, 44.4564807)],
-    "712-18": [(33.3239226, 44.4539101), (33.3246228, 44.4530170)],
-    "712-24": [(33.3244062, 44.4577300), (33.3237053, 44.4585683)],
-    "712-12": [(33.3221826, 44.4511387)],
-    "712-20": [(33.3251653, 44.4545456)],
-    "712-2": [(33.3189750, 44.4476114)],
-    "712-33": [(33.3230038, 44.4561837)],
-    "712-14": [(33.3229822, 44.4520278)],
-    "712-1": [(33.3206196, 44.4482519)],
-    "mokdad": [(33.3219444, 44.4582116)],
+    "712-6": [(33.3209604, 44.4472993), (33.3204061, 44.4480162), (33.3198835, 44.4486922), (33.3193685, 44.4493582)],
+    "712-8": [(33.3219290, 44.4483501), (33.3213578, 44.4490670), (33.3208314, 44.4497259), (33.3203018, 44.4503880)],
+    "712-12": [(33.3232290, 44.4497840), (33.3227326, 44.4504272), (33.3221570, 44.4511718), (33.3216298, 44.4518535)],
+    "712-20": [(33.3262504, 44.4531449), (33.3256831, 44.4538772), (33.3251653, 44.4545456), (33.3246601, 44.4551977)],
+    "712-18": [(33.3232225, 44.4548032), (33.3237235, 44.4541641), (33.3242347, 44.4535121), (33.3247649, 44.4528357)],
+    "712-7": [(33.3170897, 44.4480132), (33.3194050, 44.4505766), (33.3216746, 44.4530894), (33.3245234, 44.4562436)],
+    "712-22": [(33.3245234, 44.4562436), (33.3247657, 44.4559127), (33.3248869, 44.4557472), (33.3250081, 44.4555817)],
+    "712-23": [(33.3234786, 44.4513770), (33.3247649, 44.4528357), (33.3256831, 44.4538772), (33.3266171, 44.4549363)],
 }
 
 # Al-Ameen (الأمين الثانية) — OSM-sampled road points, eastern Baghdad
@@ -71,45 +65,38 @@ AMEEN_ON_ROAD_POINTS: dict[str, list[tuple[float, float]]] = {
     "park": [(33.3131894, 44.5122919)],
 }
 
-# 20 municipality alerts — 11 speed bump · 3 pothole · 6 manhole (same OSM coordinates)
+# 20 municipality alerts across 8 Zayouna block-712 streets (OSM coordinates).
+# 712-7, 712-22, 712-23 → 4 alerts each; 712-6/8 → 1 each; 712-12/20/18 → 2 each.
+# Breakdown: 11 speed bump · 3 pothole · 6 manhole.
 STREET_SCENARIOS: list[dict] = [
     {
-        "street": "712-7",
-        "street_ar": "712-7",
+        "street": "712-6",
+        "street_ar": "712-6",
         "events": [
-            ("manhole", "بالوعة — منتصف الشارع", "medium", 0.89, 0),
-            ("speed_bump", "مطب أمام مدخل عمارة", "medium", 0.88, 1),
+            ("speed_bump", "مطب — بداية الشارع", "medium", 0.88, 0),
         ],
     },
     {
-        "street": "712-15",
-        "street_ar": "712-15",
+        "street": "712-8",
+        "street_ar": "712-8",
         "events": [
-            ("speed_bump", "مطب سرعة — قرب التقاطع", "medium", 0.86, 0),
-            ("speed_bump", "مطب ثانٍ — أمام محل تجاري", "low", 0.82, 1),
+            ("pothole", "حفرة — على الشارع", "high", 0.91, 0),
         ],
     },
     {
-        "street": "712-22",
-        "street_ar": "712-22",
+        "street": "712-12",
+        "street_ar": "712-12",
         "events": [
-            ("pothole", "حفرة عميقة — على الشارع", "high", 0.93, 0),
+            ("speed_bump", "مطب — قرب التقاطع", "medium", 0.86, 0),
+            ("manhole", "بالوعة — على الشارع", "medium", 0.88, 1),
         ],
     },
     {
-        "street": "712-35",
-        "street_ar": "712-35",
+        "street": "712-20",
+        "street_ar": "712-20",
         "events": [
-            ("manhole", "بالوعة — بعد مطب قديم", "medium", 0.87, 0),
-            ("speed_bump", "مطب — أمام جامع", "medium", 0.85, 1),
-        ],
-    },
-    {
-        "street": "712-28",
-        "street_ar": "712-28",
-        "events": [
-            ("speed_bump", "مطب — بداية الشارع", "medium", 0.84, 0),
-            ("speed_bump", "مطب — نهاية الشارع", "medium", 0.83, 1),
+            ("pothole", "حفرة — قرب تقاطع", "high", 0.92, 0),
+            ("speed_bump", "مطب — أمام عمارة", "medium", 0.85, 1),
         ],
     },
     {
@@ -121,60 +108,33 @@ STREET_SCENARIOS: list[dict] = [
         ],
     },
     {
-        "street": "712-24",
-        "street_ar": "712-24",
+        "street": "712-7",
+        "street_ar": "712-7",
         "events": [
-            ("manhole", "بالوعة — منتصف الشارع", "medium", 0.87, 0),
-            ("speed_bump", "مطب — قرب مدخل فرعي", "medium", 0.84, 1),
+            ("speed_bump", "مطب — بداية الشارع", "medium", 0.84, 0),
+            ("speed_bump", "مطب — أمام محل", "medium", 0.83, 1),
+            ("pothole", "حفرة — وسط الشارع", "high", 0.90, 2),
+            ("manhole", "بالوعة — منتصف الشارع", "medium", 0.89, 3),
         ],
     },
     {
-        "street": "712-12",
-        "street_ar": "712-12",
-        "events": [
-            ("manhole", "بالوعة — على الشارع", "medium", 0.86, 0),
-        ],
-    },
-    {
-        "street": "712-20",
-        "street_ar": "712-20",
-        "events": [
-            ("pothole", "حفرة — قرب تقاطع", "high", 0.92, 0),
-        ],
-    },
-    {
-        "street": "712-2",
-        "street_ar": "712-2",
+        "street": "712-22",
+        "street_ar": "712-22",
         "events": [
             ("speed_bump", "مطب — على الشارع", "medium", 0.85, 0),
+            ("speed_bump", "مطب — ثانٍ", "low", 0.82, 1),
+            ("speed_bump", "مطب — ثالث", "medium", 0.84, 2),
+            ("manhole", "بالوعة — على الشارع", "medium", 0.88, 3),
         ],
     },
     {
-        "street": "712-33",
-        "street_ar": "712-33",
+        "street": "712-23",
+        "street_ar": "712-23",
         "events": [
-            ("speed_bump", "مطب — وسط الشارع", "medium", 0.89, 0),
-        ],
-    },
-    {
-        "street": "712-14",
-        "street_ar": "712-14",
-        "events": [
-            ("manhole", "بالوعة — على الشارع", "medium", 0.91, 0),
-        ],
-    },
-    {
-        "street": "712-1",
-        "street_ar": "712-1",
-        "events": [
-            ("speed_bump", "مطب — قرب نهاية الشارع", "medium", 0.88, 0),
-        ],
-    },
-    {
-        "street": "mokdad",
-        "street_ar": "شارع مقداد بن الأسود",
-        "events": [
-            ("pothole", "حفرة — شارع مقداد بن الأسود", "high", 0.90, 0),
+            ("speed_bump", "مطب — بداية الشارع", "medium", 0.87, 0),
+            ("speed_bump", "مطب — أمام جامع", "medium", 0.86, 1),
+            ("manhole", "بالوعة — على الشارع", "medium", 0.88, 2),
+            ("manhole", "بالوعة — قرب مطب", "medium", 0.87, 3),
         ],
     },
 ]
