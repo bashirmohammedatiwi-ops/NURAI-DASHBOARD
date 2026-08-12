@@ -42,8 +42,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "9000:9000"
+    # API داخلي فقط — اللوحة تتصل عبر api:9000 داخل شبكة Docker
+    # لفتح API على VPS استخدم منفذاً غير 9000 (محجوز غالباً لـ MinIO):
+    # ports:
+    #   - "9002:9000"
     restart: unless-stopped
 
   dashboard:

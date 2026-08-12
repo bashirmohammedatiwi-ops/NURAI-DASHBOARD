@@ -13,7 +13,7 @@ docker compose up -d --build
 | الخدمة | المنفذ | الوصف |
 |--------|--------|--------|
 | **dashboard** | **9800** | الواجهة — http://IP:9800/login |
-| **api** | **9000** | Backend API |
+| **api** | داخلي | Backend (لا يحتاج فتح منفذ على VPS) |
 | postgres | داخلي | قاعدة البيانات |
 | redis | داخلي | WebSocket / pubsub |
 
