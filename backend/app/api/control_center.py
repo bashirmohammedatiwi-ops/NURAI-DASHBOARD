@@ -595,6 +595,7 @@ def _notification_message(event: RoadEvent) -> str:
     labels = {
         RoadEventType.ACCIDENT: "تم رصد حادث — يتطلب استجابة فورية",
         RoadEventType.POTHOLE: "حفرة في الطريق — إرسال لفرق الصيانة",
+        RoadEventType.MANHOLE: "بالوعة — إرسال لفرق الصيانة",
         RoadEventType.SPEED_BUMP: "مطب سرعة — إرسال للبلدية",
         RoadEventType.TRAFFIC_VIOLATION: "مخالفة مرورية — إشعار للمرور",
         RoadEventType.ROAD_CLOSED: "طريق مغلق — تحديث للخرائط الحية",

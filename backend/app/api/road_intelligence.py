@@ -37,6 +37,11 @@ async def road_stats(project_id: UUID, db: AsyncSession = Depends(get_db)):
             RoadEvent.project_id == project_id, RoadEvent.event_type == RoadEventType.POTHOLE
         )
     )
+    manholes = await db.execute(
+        select(func.count(RoadEvent.id)).where(
+            RoadEvent.project_id == project_id, RoadEvent.event_type == RoadEventType.MANHOLE
+        )
+    )
     speed_bumps = await db.execute(
         select(func.count(RoadEvent.id)).where(
             RoadEvent.project_id == project_id, RoadEvent.event_type == RoadEventType.SPEED_BUMP
@@ -46,7 +51,7 @@ async def road_stats(project_id: UUID, db: AsyncSession = Depends(get_db)):
         select(func.count(RoadEvent.id)).where(
             RoadEvent.project_id == project_id,
             RoadEvent.is_active == True,
-            RoadEvent.event_type.in_([RoadEventType.POTHOLE, RoadEventType.SPEED_BUMP]),
+            RoadEvent.event_type.in_([RoadEventType.POTHOLE, RoadEventType.SPEED_BUMP, RoadEventType.MANHOLE]),
         )
     )
     closed = await db.execute(
@@ -72,6 +77,7 @@ async def road_stats(project_id: UUID, db: AsyncSession = Depends(get_db)):
         "active_accidents": accidents.scalar() or 0,
         "closed_roads": closed.scalar() or 0,
         "potholes_detected": potholes.scalar() or 0,
+        "manholes_detected": manholes.scalar() or 0,
         "speed_bumps_detected": speed_bumps.scalar() or 0,
         "municipality_alerts": municipality_alerts.scalar() or 0,
         "traffic_violations": violations.scalar() or 0,

@@ -27,7 +27,7 @@ export function DemoOnboardingBanner({ projectId, alertsCount = 0, fleetCount = 
           <div>
             <p className="font-bold text-foreground">ابدأ ببيانات العرض</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              22 تنبيه في بغداد · 10 مركبات · مخالفتا سرعة — جاهزة للعرض التوضيحي
+              11 مطب · 3 حفر · 6 بالوعات · 10 مركبات — جاهزة للعرض التوضيحي
             </p>
           </div>
         </div>

@@ -4,6 +4,7 @@ export type EventType =
   | 'accident'
   | 'pothole'
   | 'speed_bump'
+  | 'manhole'
   | 'road_crack'
   | 'barrier'
   | 'road_closed'
@@ -92,6 +93,7 @@ export interface RoadStats {
   active_accidents: number;
   closed_roads: number;
   potholes_detected: number;
+  manholes_detected?: number;
   speed_bumps_detected: number;
   municipality_alerts: number;
   traffic_violations: number;

@@ -40,6 +40,7 @@ async def init_db() -> None:
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.execute(text("ALTER TYPE roadeventtype ADD VALUE IF NOT EXISTS 'manhole'"))
     except Exception as exc:
         print(f"create_all warning: {exc}", file=sys.stderr)
 

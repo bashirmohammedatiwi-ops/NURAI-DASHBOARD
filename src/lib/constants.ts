@@ -8,6 +8,7 @@ export const EVENT_META: Record<EventType, { labelAr: string; color: string; ico
   accident: { labelAr: 'حادث', color: '#dc2626', icon: '🚨' },
   pothole: { labelAr: 'حفرة', color: '#ea580c', icon: '🕳️' },
   speed_bump: { labelAr: 'مطب سرعة', color: '#ca8a04', icon: '⬆️' },
+  manhole: { labelAr: 'بالوعة', color: '#db2777', icon: '⭕' },
   road_crack: { labelAr: 'شقوق', color: '#9333ea', icon: '〰️' },
   barrier: { labelAr: 'حاجز', color: '#64748b', icon: '🚧' },
   road_closed: { labelAr: 'طريق مغلق', color: '#b91c1c', icon: '⛔' },
@@ -62,7 +63,7 @@ export const DEFAULT_MAP_ZOOM = 6;
 
 export function eventPlaceholderImage(type: EventType): string {
   const colors: Record<EventType, string> = {
-    accident: 'dc2626', pothole: 'ea580c', speed_bump: 'ca8a04', road_crack: '9333ea', barrier: '64748b',
+    accident: 'dc2626', pothole: 'ea580c', speed_bump: 'ca8a04', manhole: 'db2777', road_crack: '9333ea', barrier: '64748b',
     road_closed: 'b91c1c', traffic_violation: 'ca8a04', construction: 'd97706', flooded_road: '2563eb',
   };
   const label = EVENT_META[type]?.labelAr ?? type;

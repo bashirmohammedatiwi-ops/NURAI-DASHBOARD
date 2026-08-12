@@ -17,7 +17,8 @@ from app.models import FleetDevice, Project, RoadEvent, RoadEventType
 from app.models.fleet import DeviceTelemetry
 from app.services.road.event_helpers import default_recipient
 
-DEMO_MARKER = "rasid_iraq_demo_v1"
+DEMO_MARKER = "rasid_iraq_demo_v2"
+LEGACY_DEMO_MARKERS = ("rasid_iraq_demo_v1",)
 DEMO_NEIGHBORHOOD = "zayouna"
 DEMO_NEIGHBORHOOD_AR = "الزيونة"
 DEMO_BLOCK = "712"
@@ -70,13 +71,13 @@ AMEEN_ON_ROAD_POINTS: dict[str, list[tuple[float, float]]] = {
     "park": [(33.3131894, 44.5122919)],
 }
 
-# Per-street alert scenarios — coordinates taken from STREET_ON_ROAD_POINTS
+# 20 municipality alerts — 11 speed bump · 3 pothole · 6 manhole (same OSM coordinates)
 STREET_SCENARIOS: list[dict] = [
     {
         "street": "712-7",
         "street_ar": "712-7",
         "events": [
-            ("pothole", "حفرة في منتصف الشارع", "high", 0.91, 0),
+            ("manhole", "بالوعة — منتصف الشارع", "medium", 0.89, 0),
             ("speed_bump", "مطب أمام مدخل عمارة", "medium", 0.88, 1),
         ],
     },
@@ -99,7 +100,7 @@ STREET_SCENARIOS: list[dict] = [
         "street": "712-35",
         "street_ar": "712-35",
         "events": [
-            ("pothole", "حفرة — بعد مطب قديم", "medium", 0.87, 0),
+            ("manhole", "بالوعة — بعد مطب قديم", "medium", 0.87, 0),
             ("speed_bump", "مطب — أمام جامع", "medium", 0.85, 1),
         ],
     },
@@ -115,15 +116,15 @@ STREET_SCENARIOS: list[dict] = [
         "street": "712-18",
         "street_ar": "712-18",
         "events": [
-            ("pothole", "حفرة — على الشارع", "high", 0.90, 0),
-            ("speed_bump", "مطب — بعد الحفرة", "medium", 0.86, 1),
+            ("manhole", "بالوعة — على الشارع", "medium", 0.88, 0),
+            ("speed_bump", "مطب — مجاور للبالوعة", "medium", 0.86, 1),
         ],
     },
     {
         "street": "712-24",
         "street_ar": "712-24",
         "events": [
-            ("pothole", "حفرة — منتصف الشارع", "medium", 0.88, 0),
+            ("manhole", "بالوعة — منتصف الشارع", "medium", 0.87, 0),
             ("speed_bump", "مطب — قرب مدخل فرعي", "medium", 0.84, 1),
         ],
     },
@@ -131,7 +132,7 @@ STREET_SCENARIOS: list[dict] = [
         "street": "712-12",
         "street_ar": "712-12",
         "events": [
-            ("pothole", "حفرة — على الشارع", "medium", 0.86, 0),
+            ("manhole", "بالوعة — على الشارع", "medium", 0.86, 0),
         ],
     },
     {
@@ -145,28 +146,28 @@ STREET_SCENARIOS: list[dict] = [
         "street": "712-2",
         "street_ar": "712-2",
         "events": [
-            ("pothole", "حفرة — على الشارع", "medium", 0.85, 0),
+            ("speed_bump", "مطب — على الشارع", "medium", 0.85, 0),
         ],
     },
     {
         "street": "712-33",
         "street_ar": "712-33",
         "events": [
-            ("pothole", "حفرة — وسط الشارع", "medium", 0.89, 0),
+            ("speed_bump", "مطب — وسط الشارع", "medium", 0.89, 0),
         ],
     },
     {
         "street": "712-14",
         "street_ar": "712-14",
         "events": [
-            ("pothole", "حفرة — على الشارع", "high", 0.91, 0),
+            ("manhole", "بالوعة — على الشارع", "medium", 0.91, 0),
         ],
     },
     {
         "street": "712-1",
         "street_ar": "712-1",
         "events": [
-            ("pothole", "حفرة — قرب نهاية الشارع", "medium", 0.88, 0),
+            ("speed_bump", "مطب — قرب نهاية الشارع", "medium", 0.88, 0),
         ],
     },
     {
@@ -181,7 +182,14 @@ STREET_SCENARIOS: list[dict] = [
 _EVENT_TYPE = {
     "pothole": RoadEventType.POTHOLE,
     "speed_bump": RoadEventType.SPEED_BUMP,
+    "manhole": RoadEventType.MANHOLE,
     "traffic_violation": RoadEventType.TRAFFIC_VIOLATION,
+}
+
+_KIND_AR = {
+    "pothole": "حفرة",
+    "speed_bump": "مطب سرعة",
+    "manhole": "بالوعة",
 }
 
 
@@ -201,7 +209,7 @@ def _build_municipality_alerts() -> list[dict]:
                 lat, lng = road_points[0]
             else:
                 raise ValueError(f"Missing on-road points for street {street}")
-            kind_ar = "حفرة" if event_key == "pothole" else "مطب سرعة"
+            kind_ar = _KIND_AR[event_key]
             if street_ar.startswith("شارع"):
                 title = f"{kind_ar} — {DEMO_BLOCK_AR} · {street_ar}"
             else:
@@ -225,6 +233,7 @@ def _build_municipality_alerts() -> list[dict]:
 
 
 MUNICIPALITY_ALERTS = _build_municipality_alerts()
+ALL_DEMO_MARKERS = {DEMO_MARKER, *LEGACY_DEMO_MARKERS}
 
 
 def _build_speed_violation_alerts() -> list[dict]:
@@ -409,12 +418,22 @@ async def clear_demo_alerts(db: AsyncSession, project_id: uuid.UUID) -> int:
     result = await db.execute(select(RoadEvent).where(RoadEvent.project_id == project_id))
     removed = 0
     for event in result.scalars().all():
-        if (event.extra_metadata or {}).get("demo_batch") == DEMO_MARKER:
-            await db.delete(event)
-            removed += 1
+        batch = (event.extra_metadata or {}).get("demo_batch")
+        if batch not in ALL_DEMO_MARKERS:
+            continue
+        await db.delete(event)
+        removed += 1
     if removed:
         await db.flush()
     return removed
+
+
+async def _has_legacy_demo(db: AsyncSession, project_id: uuid.UUID) -> bool:
+    result = await db.execute(select(RoadEvent).where(RoadEvent.project_id == project_id).limit(200))
+    for event in result.scalars().all():
+        if (event.extra_metadata or {}).get("demo_batch") in LEGACY_DEMO_MARKERS:
+            return True
+    return False
 
 
 async def _purge_stale_demo_fleet(
@@ -564,10 +583,11 @@ async def seed_iraq_demo(db: AsyncSession, project_id: uuid.UUID, *, force: bool
             "source_vehicle": DEMO_SOURCE_VEHICLE_ID,
             "images_attached": attach.get("attached", 0),
             "images_source": attach.get("source"),
+            "municipality_breakdown": {"speed_bump": 11, "pothole": 3, "manhole": 6},
         }
 
     cleared = 0
-    if force:
+    if force or await _has_legacy_demo(db, project_id):
         cleared = await clear_demo_alerts(db, project_id)
 
     alerts_created = 0
